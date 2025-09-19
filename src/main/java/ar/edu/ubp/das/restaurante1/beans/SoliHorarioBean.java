@@ -8,6 +8,15 @@ public class SoliHorarioBean {
     private Time hora;
     private int idSucursal;
     private int cantComensales;
+    private int codZona;
+
+    public int getCodZona() {
+        return codZona;
+    }
+
+    public void setCodZona(int codZona) {
+        this.codZona = codZona;
+    }
 
     public int getIdSucursal() {
         return idSucursal;

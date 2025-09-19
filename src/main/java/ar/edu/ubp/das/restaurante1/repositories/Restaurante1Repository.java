@@ -1,6 +1,7 @@
 package ar.edu.ubp.das.restaurante1.repositories;
 import ar.edu.ubp.das.restaurante1.beans.HorarioBean;
 import ar.edu.ubp.das.restaurante1.beans.ReservaBean;
+import ar.edu.ubp.das.restaurante1.beans.RestauranteBean;
 import ar.edu.ubp.das.restaurante1.beans.SoliHorarioBean;
 import ar.edu.ubp.das.restaurante1.components.SimpleJdbcCallFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,9 +55,13 @@ public class Restaurante1Repository {
         SqlParameterSource params = new MapSqlParameterSource()
                .addValue("id_sucursal", data.getIdSucursal(), Types.INTEGER)
                 .addValue("cant",data.getCantComensales(), Types.INTEGER)
+                .addValue("cod_zona", data.getCodZona(), Types.INTEGER)
                 .addValue("fecha",data.getFecha(), Types.DATE)
                 .addValue("hora",data.getHora(), Types.TIME);
         return jdbcCallFactory.executeQuery("", "dbo", params, "", HorarioBean.class);
+    }
+    public RestauranteBean getRestuarantes(){
+        return jdbcCallFactory.executeQuery("get_restaurantes", "dbo", "", .class)
     }
 
 }
