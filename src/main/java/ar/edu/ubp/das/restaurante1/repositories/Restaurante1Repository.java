@@ -27,8 +27,8 @@ public class Restaurante1Repository {
                 .addValue("correo", data.getCorreo())
                 .addValue("telefonos", data.getTelefono())
                 .addValue("cod_reserva", null, Types.OTHER)                 // UUID -> OTHER, se ignora en el SP
-                .addValue("fecha_reserva", data.getFechaReserva(), Types.DATE)
-                .addValue("hora_reserva",  data.getHoraReserva(),  Types.TIME) // asegurate que venga "HH:mm:00"
+                .addValue("fecha_reserva", java.sql.Date.valueOf(data.getFechaReserva()), Types.DATE)
+                .addValue("hora_reserva",  java.sql.Time.valueOf(data.getHoraReserva()),  Types.TIME) // asegurate que venga "HH:mm:00"
                 .addValue("nro_restaurante", 1, Types.INTEGER)
                 .addValue("nro_sucursal", data.getIdSucursal(), Types.INTEGER)
                 .addValue("cod_zona", data.getCodZona(), Types.INTEGER)
@@ -53,15 +53,16 @@ public class Restaurante1Repository {
     }
     public List<HorarioBean> getHorarios(SoliHorarioBean data) {
         SqlParameterSource params = new MapSqlParameterSource()
-               .addValue("id_sucursal", data.getIdSucursal(), Types.INTEGER)
-                .addValue("cant",data.getCantComensales(), Types.INTEGER)
+                .addValue("nro_restaurante", 1, Types.INTEGER)
+               .addValue("nro_sucursal", data.getIdSucursal(), Types.INTEGER)
                 .addValue("cod_zona", data.getCodZona(), Types.INTEGER)
-                .addValue("fecha",data.getFecha(), Types.DATE)
-                .addValue("hora",data.getHora(), Types.TIME);
-        return jdbcCallFactory.executeQuery("", "dbo", params, "", HorarioBean.class);
+                .addValue("fecha",java.sql.Date.valueOf(data.getFecha()), Types.DATE)
+                .addValue("cant_personas",data.getCantComensales(), Types.INTEGER)
+                .addValue("menores",data.isMenores(), Types.BIT);
+        return jdbcCallFactory.executeQuery("get_horarios_disponibles", "dbo", params, "", HorarioBean.class);
     }
-    public RestauranteBean getRestuarantes(){
+    /*public RestauranteBean getRestuarantes(){
         return jdbcCallFactory.executeQuery("get_restaurantes", "dbo", "", .class)
-    }
+    }*/
 
 }

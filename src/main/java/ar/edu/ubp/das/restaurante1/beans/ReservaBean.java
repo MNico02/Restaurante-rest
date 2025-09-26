@@ -1,7 +1,10 @@
 package ar.edu.ubp.das.restaurante1.beans;
 
-import java.sql.Date;
-import java.sql.Time;
+import com.fasterxml.jackson.annotation.JsonFormat;
+
+
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 public class ReservaBean {
     private String nombre;
@@ -9,8 +12,10 @@ public class ReservaBean {
     private String telefono;
     private String correo;
     private int idSucursal;
-    private Date fechaReserva;
-    private Time horaReserva;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate fechaReserva;
+    @JsonFormat(pattern = "HH:mm:ss")
+    private LocalTime horaReserva;
     private int cantAdultos;
     private int cantMenores;
     private int codZona;
@@ -19,6 +24,22 @@ public class ReservaBean {
 
     public String getNombre() {
         return nombre;
+    }
+
+    public LocalDate getFechaReserva() {
+        return fechaReserva;
+    }
+
+    public void setFechaReserva(LocalDate fechaReserva) {
+        this.fechaReserva = fechaReserva;
+    }
+
+    public LocalTime getHoraReserva() {
+        return horaReserva;
+    }
+
+    public void setHoraReserva(LocalTime horaReserva) {
+        this.horaReserva = horaReserva;
     }
 
     public void setNombre(String nombre) {
@@ -57,21 +78,7 @@ public class ReservaBean {
         this.idSucursal = idSucursal;
     }
 
-    public Date getFechaReserva() {
-        return fechaReserva;
-    }
 
-    public void setFechaReserva(Date fechaReserva) {
-        this.fechaReserva = fechaReserva;
-    }
-
-    public Time getHoraReserva() {
-        return horaReserva;
-    }
-
-    public void setHoraReserva(Time horaReserva) {
-        this.horaReserva = horaReserva;
-    }
 
     public int getCantAdultos() {
         return cantAdultos;

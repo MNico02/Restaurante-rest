@@ -4,22 +4,23 @@ import java.sql.Date;
 import java.sql.Time;
 
 public class HorarioBean {
-    private Date fecha;
-    private Time hora;
 
-    public Date getFecha() {
-        return fecha;
+    private Time horaReserva;
+    private Time horaHasta;
+
+    public Time getHoraReserva() {
+        return horaReserva;
     }
 
-    public void setFecha(Date fecha) {
-        this.fecha = fecha;
+    public void setHoraReserva(Time horaReserva) {
+        this.horaReserva = horaReserva;
     }
 
-    public Time getHora() {
-        return hora;
+    public Time getHoraHasta() {
+        return horaHasta;
     }
 
-    public void setHora(Time hora) {
-        this.hora = hora;
+    public void setHoraHasta(Time horaHasta) {
+        this.horaHasta = horaHasta;
     }
 }

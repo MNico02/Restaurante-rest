@@ -8,7 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/restaurante1")
@@ -18,20 +20,22 @@ public class Restaurante1Resource {
     private Restaurante1Repository restaurante1Repository;
 
     @PostMapping("/confirmarReserva")
-    public ResponseEntity<String> insertarReserva(@RequestBody ReservaBean reserva) {
+    public ResponseEntity<Map<String, String>> insertarReserva(@RequestBody ReservaBean reserva) {
         String codReserva = restaurante1Repository.insReserva(reserva);
-        return ResponseEntity.ok(codReserva);
+        Map<String, String> response = new HashMap<>();
+        response.put("codReserva", codReserva);
+        return ResponseEntity.ok(response);
     }
     @GetMapping("/consultarDisponibilidad")
     public ResponseEntity<List<HorarioBean>> obtenerHorarios(@RequestBody SoliHorarioBean soliHorarioBean) {
         List<HorarioBean> horarios = restaurante1Repository.getHorarios(soliHorarioBean);
         return ResponseEntity.ok(horarios);
     }
-    @GetMapping("/consultarRestaurante")
+    /*@GetMapping("/consultarRestaurante")
     public ResponseEntity<RestauranteBean> obtenerRestaurantes() {
         RestauranteBean restaurante = restaurante1Repository.getRestaurantes();
         return ResponseEntity.ok(restaurante);
-    }
+    }*/
 
 
    /* @GetMapping("/provincias/{codPais}")

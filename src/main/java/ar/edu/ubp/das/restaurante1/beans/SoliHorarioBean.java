@@ -1,14 +1,27 @@
 package ar.edu.ubp.das.restaurante1.beans;
 
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import java.sql.Date;
-import java.sql.Time;
+import java.time.LocalDate;
+
 
 public class SoliHorarioBean {
-    private Date fecha;
-    private Time hora;
     private int idSucursal;
-    private int cantComensales;
     private int codZona;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate fecha;
+    private int cantComensales;
+    private boolean menores;
+
+    public int getIdSucursal() {
+        return idSucursal;
+    }
+
+    public void setIdSucursal(int idSucursal) {
+        this.idSucursal = idSucursal;
+    }
 
     public int getCodZona() {
         return codZona;
@@ -18,12 +31,12 @@ public class SoliHorarioBean {
         this.codZona = codZona;
     }
 
-    public int getIdSucursal() {
-        return idSucursal;
+    public LocalDate getFecha() {
+        return fecha;
     }
 
-    public void setIdSucursal(int idSucursal) {
-        this.idSucursal = idSucursal;
+    public void setFecha(LocalDate fecha) {
+        this.fecha = fecha;
     }
 
     public int getCantComensales() {
@@ -34,20 +47,12 @@ public class SoliHorarioBean {
         this.cantComensales = cantComensales;
     }
 
-    public Date getFecha() {
-        return fecha;
+    public boolean isMenores() {
+        return menores;
     }
 
-    public void setFecha(Date fecha) {
-        this.fecha = fecha;
-    }
-
-    public Time getHora() {
-        return hora;
-    }
-
-    public void setHora(Time hora) {
-        this.hora = hora;
+    public void setMenores(boolean menores) {
+        this.menores = menores;
     }
 }
 
