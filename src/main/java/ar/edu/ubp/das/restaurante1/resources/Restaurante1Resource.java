@@ -38,22 +38,4 @@ public class Restaurante1Resource {
     }*/
 
 
-   /* @GetMapping("/provincias/{codPais}")
-    public ResponseEntity<List<ProvinciaBean>> obtenerProvincias(@PathVariable String codPais) {
-        List<ProvinciaBean> provincias = localidadesRepository.getProvincias(codPais);
-        return ResponseEntity.ok(provincias);
-    }
-
-    @PostMapping("/localidades")
-    public ResponseEntity<List<LocalidadBean>> obtenerLocalidades(@RequestBody LocalidadCriteriaBean criteria) {
-        List<LocalidadBean> localidades = localidadesRepository.getLocalidades(criteria);
-        return ResponseEntity.ok(localidades);
-    }
-
-    @PutMapping("/localidad")
-    public ResponseEntity<LocalidadBean> insertarLocalidad(@RequestBody LocalidadBean localidad) {
-        LocalidadBean updatedLocalidad = localidadesRepository.insLocalidad(localidad);
-        return ResponseEntity.ok(updatedLocalidad);
-    }*/
-
 }
