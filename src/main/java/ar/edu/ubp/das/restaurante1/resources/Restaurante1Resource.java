@@ -4,6 +4,7 @@ import ar.edu.ubp.das.restaurante1.beans.ReservaBean;
 import ar.edu.ubp.das.restaurante1.beans.RestauranteBean;
 import ar.edu.ubp.das.restaurante1.beans.SoliHorarioBean;
 import ar.edu.ubp.das.restaurante1.repositories.Restaurante1Repository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,11 +32,16 @@ public class Restaurante1Resource {
         List<HorarioBean> horarios = restaurante1Repository.getHorarios(soliHorarioBean);
         return ResponseEntity.ok(horarios);
     }
-    /*@GetMapping("/consultarRestaurante")
-    public ResponseEntity<RestauranteBean> obtenerRestaurantes() {
-        RestauranteBean restaurante = restaurante1Repository.getRestaurantes();
-        return ResponseEntity.ok(restaurante);
-    }*/
+
+
+
+    @GetMapping("/restaurante")
+    public ResponseEntity<RestauranteBean> getRestaurante(@RequestParam("id") int id) throws JsonProcessingException {
+        RestauranteBean info = restaurante1Repository.getInfoRestaurante(id);
+        return ResponseEntity.ok(info);
+    }
+
+
 
 
 }
