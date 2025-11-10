@@ -1,11 +1,9 @@
 package ar.edu.ubp.das.restaurante1.resources;
-import ar.edu.ubp.das.restaurante1.beans.HorarioBean;
-import ar.edu.ubp.das.restaurante1.beans.ReservaBean;
-import ar.edu.ubp.das.restaurante1.beans.RestauranteBean;
-import ar.edu.ubp.das.restaurante1.beans.SoliHorarioBean;
+import ar.edu.ubp.das.restaurante1.beans.*;
 import ar.edu.ubp.das.restaurante1.repositories.Restaurante1Repository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,6 +38,18 @@ public class Restaurante1Resource {
         RestauranteBean info = restaurante1Repository.getInfoRestaurante(id);
         return ResponseEntity.ok(info);
     }
+
+    @PostMapping("/registrarClicks")
+    public ResponseEntity<Map<String, Object>> insertarCicks(@RequestBody SoliClickBean click) {
+        try {
+            restaurante1Repository.insClick(click);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Click registrado correctamente"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
 
 
 

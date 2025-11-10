@@ -279,6 +279,27 @@ CREATE TABLE dbo.reservas_sucursales(
 );
 GO
 
+CREATE TABLE dbo.clicks_contenidos (
+                                       nro_restaurante       INT           NOT NULL,
+                                       nro_contenido         INT           NOT NULL,
+                                       nro_click             INT           NOT NULL,
+                                       fecha_hora_registro   DATETIME2(3)  NOT NULL
+        CONSTRAINT DF_clicks_contenidos_fecha DEFAULT (SYSUTCDATETIME()),
+                                       nro_cliente           INT           NULL,
+                                       costo_click           DECIMAL(12,2) NOT NULL,
+                                       CONSTRAINT PK_clicks_contenidos
+                                           PRIMARY KEY (nro_restaurante, nro_contenido, nro_click),
+                                       CONSTRAINT FK_clicks_contenidos_contenidos
+                                           FOREIGN KEY (nro_restaurante, nro_contenido)
+                                               REFERENCES dbo.contenidos (nro_restaurante, nro_contenido),
+                                       CONSTRAINT FK_clicks_contenidos_clientes
+                                           FOREIGN KEY (nro_cliente)
+                                               REFERENCES dbo.clientes (nro_cliente),
+                                       CONSTRAINT CK_clicks_contenidos_costo_nonneg
+                                           CHECK (costo_click >= 0)
+);
+GO
+
 CREATE OR ALTER TRIGGER TR_zonas_sucursales_validar_capacidad
 ON dbo.zonas_sucursales
 AFTER INSERT, UPDATE
@@ -528,7 +549,7 @@ SET @cliente_id = SCOPE_IDENTITY();
 END
 END
 
-       
+
 
         /* 3) Insertar reserva y capturar cod_reserva */
        /* 3) Insertar reserva y capturar cod_reserva */
@@ -789,3 +810,59 @@ GO
 
 
 --EXEC dbo.get_info_restaurante_rs @nro_restaurante = 1;
+
+
+CREATE OR ALTER PROCEDURE dbo.sp_clicks_contenidos_insertar
+    @nro_restaurante      INT,
+    @nro_contenido        INT,
+    @nro_cliente          INT         = NULL,      -- puede venir NULL
+    @fecha_hora_registro  DATETIME2   = NULL       -- opcional; default = ahora
+    AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @ahora DATETIME2 = ISNULL(@fecha_hora_registro, SYSUTCDATETIME());
+    DECLARE @costo DECIMAL(12,2);
+    DECLARE @nro_click INT;
+
+    -- Aislar para evitar nro_click duplicados en concurrencia
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+BEGIN TRAN;
+
+    -- 1) Obtener costo desde contenidos (y validar existencia)
+SELECT @costo = c.costo_click
+FROM dbo.contenidos AS c WITH (UPDLOCK, HOLDLOCK)
+WHERE c.nro_restaurante = @nro_restaurante
+  AND c.nro_contenido   = @nro_contenido;
+
+IF @costo IS NULL
+BEGIN
+ROLLBACK;
+;THROW 50010, 'No existe contenido para ese restaurante/contenido o costo_click NULL.', 1;
+END
+
+    -- 2) Calcular siguiente nro_click incremental por (restaurante, contenido)
+SELECT @nro_click = ISNULL(MAX(cc.nro_click), 0) + 1
+FROM dbo.clicks_contenidos AS cc WITH (UPDLOCK, HOLDLOCK)
+WHERE cc.nro_restaurante = @nro_restaurante
+  AND cc.nro_contenido   = @nro_contenido;
+
+-- 3) Insertar el click
+INSERT INTO dbo.clicks_contenidos
+(nro_restaurante, nro_contenido, nro_click, fecha_hora_registro, nro_cliente, costo_click)
+VALUES
+    (@nro_restaurante, @nro_contenido, @nro_click, @ahora, @nro_cliente, @costo);
+
+COMMIT;
+
+-- 4) Devolver el registro insertado (útil para log/confirmación)
+SELECT
+    @nro_restaurante   AS nro_restaurante,
+    @nro_contenido     AS nro_contenido,
+    @nro_click         AS nro_click,
+    @ahora             AS fecha_hora_registro,
+    @nro_cliente       AS nro_cliente,
+    @costo             AS costo_click;
+END;
+GO

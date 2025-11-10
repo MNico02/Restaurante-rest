@@ -9,7 +9,9 @@ import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -53,6 +55,43 @@ public class Restaurante1Repository {
         }
         return null; // o lanzar excepción si preferís
     }
+    public String insClick(SoliClickBean data) {
+
+        ContenidoKey key = parseCodContenidoRestauranteSplit(data.getCodContenidoRestaurante());
+        Integer nroContenido   = key.nroContenido();
+        Integer nroRestaurante = key.nroRestaurante();
+
+
+        // 4) Parámetros con tipos correctos
+        SqlParameterSource params = new MapSqlParameterSource()
+                .addValue("nro_restaurante",    nroRestaurante, Types.INTEGER)
+                .addValue("nro_contenido",      nroContenido,   Types.INTEGER)
+                .addValue("nro_cliente",        null,     Types.INTEGER)
+                .addValue("fecha_hora_registro",null,        Types.TIMESTAMP);
+
+        try {
+            jdbcCallFactory.execute("sp_clicks_contenidos_insertar", "dbo", params);
+            return "Click registrado correctamente.";
+        } catch (Exception e) {
+
+            return "Error al registrar click: " + e.getMessage();
+        }
+    }
+
+    /** "123-45" -> (nroContenido=123, nroRestaurante=45) */
+    public static ContenidoKey parseCodContenidoRestauranteSplit(String code) {
+        if (code == null) throw new IllegalArgumentException("code null");
+        String[] parts = code.trim().split("-", 2); // límite 2
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Formato inválido: esperado 'contenido-restaurante'. Recibido: " + code);
+        }
+        int nroContenido   = Integer.parseInt(parts[0].trim());
+        int nroRestaurante = Integer.parseInt(parts[1].trim());
+        return new ContenidoKey(nroContenido, nroRestaurante);
+    }
+
+    public record ContenidoKey(int nroContenido, int nroRestaurante) {}
+
     public List<HorarioBean> getHorarios(SoliHorarioBean data) {
         SqlParameterSource params = new MapSqlParameterSource()
                 .addValue("nro_restaurante", 1, Types.INTEGER)
