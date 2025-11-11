@@ -40,9 +40,11 @@ public class Restaurante1Resource {
     }
 
     @PostMapping("/registrarClicks")
-    public ResponseEntity<Map<String, Object>> insertarCicks(@RequestBody SoliClickBean click) {
+    public ResponseEntity<Map<String, Object>> insertarCicks(@RequestBody List<SoliClickBean> clicks) {
         try {
-            restaurante1Repository.insClick(click);
+            for (SoliClickBean c : clicks) {
+                restaurante1Repository.insClick(c);
+            }
             return ResponseEntity.ok(Map.of("success", true, "message", "Click registrado correctamente"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
