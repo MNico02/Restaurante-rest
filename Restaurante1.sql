@@ -866,3 +866,52 @@ SELECT
     @costo             AS costo_click;
 END;
 GO
+
+
+
+/* ============================================
+   CONTENIDOS PROMOCIONALES — RESTAURANTE 1
+   ============================================*/
+
+-- ===========================
+-- Sucursal 1 (Tradicional, Medio, Arg + Ita, Sin gluten)
+-- ===========================
+INSERT INTO dbo.contenidos
+(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
+(1, 1,
+ N'Menú Tradicional "Abuela" (Sin gluten): empanadas de carne al horno con tapa de maíz + sorrentinos de ricota y nuez en salsa fileto. Precio medio. Ideal para compartir.',
+ N'https://img.example.com/r1/s1_trad_abue_sg.jpg', 1, 0.10, 1);
+
+INSERT INTO dbo.contenidos
+(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
+    (1, 2,
+     N'Combo Argentino & Italiano (Sin gluten): milanesa napolitana con papas al horno + penne rigate al pesto. Estilo tradicional, porciones generosas, precio medio.',
+     N'https://img.example.com/r1/s1_arg_ita_sg_combo.jpg', 1, 0.10, 1);
+
+INSERT INTO dbo.contenidos
+(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
+    (1, 3,
+     N'Noche de Pastas Caseras (opción Sin gluten): tallarines amasados a la vista con bolognesa o tuco de cocción lenta + copa de vino de la casa. Ambiente tradicional.',
+     N'https://img.example.com/r1/s1_pastas_sg.jpg', 1, 0.10, 1);
+
+
+-- ===========================
+-- Sucursal 2 (Casual, Alto/Premium, Mexicana, Vegetariana)
+-- ===========================
+INSERT INTO dbo.contenidos
+(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
+    (1, 4,
+     N'Tacos Degustación Premium (Vegetarianos): set de 6 tacos (hongos asados, calabaza especiada, frijoles y queso), salsas caseras y guacamole. Estilo casual, experiencia gourmet.',
+     N'https://img.example.com/r1/s2_tacos_veg_premium.jpg', 1, 0.10, 2);
+
+INSERT INTO dbo.contenidos
+(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
+    (1, 5,
+     N'Burrito Bowl Verde (Vegetariano): arroz cilantro-lima, mix de hojas, porotos negros, fajitas de verduras, pico de gallo y crema ácida. Presentación premium, servicio casual.',
+     N'https://img.example.com/r1/s2_burrito_bowl_veg.jpg', 1, 0.10, 2);
+
+INSERT INTO dbo.contenidos
+(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
+    (1, 6,
+     N'Cena Mexicana Premium: enchiladas rojas vegetarianas + maridaje con tequila/agua fresca. Estilo casual chic, producto de alta calidad, ideal para celebración.',
+     N'https://img.example.com/r1/s2_mex_premium_dinner.jpg', 1, 0.10, 2);
