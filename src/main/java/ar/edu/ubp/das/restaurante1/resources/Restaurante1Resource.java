@@ -73,6 +73,12 @@ public class Restaurante1Resource {
         }
     }
 
+    @GetMapping("/obtenerPromociones")
+    public ResponseEntity<List<ContenidoBean>> getPromociones(@RequestParam("id") int id) throws JsonProcessingException {
+        List<ContenidoBean> promociones = restaurante1Repository.getContenidos(id);
+        return ResponseEntity.ok(promociones);
+    }
+
 
 
 

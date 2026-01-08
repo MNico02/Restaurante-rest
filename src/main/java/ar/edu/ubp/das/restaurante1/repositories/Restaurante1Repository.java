@@ -55,6 +55,17 @@ public class Restaurante1Repository {
         }
         return null; // o lanzar excepción si preferís
     }
+    public List<HorarioBean> getHorarios(SoliHorarioBean data) {
+        SqlParameterSource params = new MapSqlParameterSource()
+                .addValue("nro_restaurante", 1, Types.INTEGER)
+                .addValue("nro_sucursal", data.getIdSucursal(), Types.INTEGER)
+                .addValue("cod_zona", data.getCodZona(), Types.INTEGER)
+                .addValue("fecha",java.sql.Date.valueOf(data.getFecha()), Types.DATE)
+                .addValue("cant_personas",data.getCantComensales(), Types.INTEGER)
+                .addValue("menores",data.isMenores(), Types.BIT);
+        return jdbcCallFactory.executeQuery("get_horarios_disponibles", "dbo", params, "", HorarioBean.class);
+    }
+
     public String insClick(SoliClickBean data) {
 
         ContenidoKey key = parseCodContenidoRestauranteSplit(data.getCodContenidoRestaurante());
@@ -92,17 +103,41 @@ public class Restaurante1Repository {
 
     public record ContenidoKey(int nroContenido, int nroRestaurante) {}
 
-    public List<HorarioBean> getHorarios(SoliHorarioBean data) {
-        SqlParameterSource params = new MapSqlParameterSource()
-                .addValue("nro_restaurante", 1, Types.INTEGER)
-               .addValue("nro_sucursal", data.getIdSucursal(), Types.INTEGER)
-                .addValue("cod_zona", data.getCodZona(), Types.INTEGER)
-                .addValue("fecha",java.sql.Date.valueOf(data.getFecha()), Types.DATE)
-                .addValue("cant_personas",data.getCantComensales(), Types.INTEGER)
-                .addValue("menores",data.isMenores(), Types.BIT);
-        return jdbcCallFactory.executeQuery("get_horarios_disponibles", "dbo", params, "", HorarioBean.class);
-    }
 
+
+    public List<ContenidoBean> getContenidos(int nroRestaurante) {
+
+        SqlParameterSource params = new MapSqlParameterSource()
+                .addValue("nro_restaurante", 1, Types.INTEGER);
+
+        Map<String, Object> out =
+                jdbcCallFactory.executeWithOutputs(
+                        "get_contenidos",
+                        "dbo",
+                        params
+                );
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> rs =
+                (List<Map<String, Object>>) out.get("#result-set-1");
+
+        List<ContenidoBean> contenidos = new ArrayList<>();
+
+        if (rs != null) {
+            for (Map<String, Object> row : rs) {
+                ContenidoBean c = new ContenidoBean();
+                c.setNroSucursal(getIntObj(row.get("nro_sucursal")));
+                c.setNroContenido(getInt(row.get("nro_contenido")));
+                c.setContenidoAPublicar(getStr(row.get("contenido_a_publicar")));
+                c.setImagenAPublicar(getStr(row.get("imagen_a_publicar")));
+                c.setPublicado(true); // ya fueron publicados por el SP
+                c.setCostoClick(getBigDec(row.get("costo_click")));
+                contenidos.add(c);
+            }
+        }
+
+        return contenidos;
+    }
 
 
 
