@@ -926,3 +926,50 @@ INSERT INTO dbo.contenidos
     (1, 6,
      N'Cena Mexicana Premium: enchiladas rojas vegetarianas + maridaje con tequila/agua fresca. Estilo casual chic, producto de alta calidad, ideal para celebración.',
      N'https://img.example.com/r1/s2_mex_premium_dinner.jpg', 1, 0.10, 2);
+
+
+go
+	 CREATE OR ALTER PROCEDURE dbo.get_contenidos
+    @nro_restaurante INT
+    AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+BEGIN TRY
+BEGIN TRAN;
+
+        -- 1) Obtener contenidos no publicados /
+SELECT
+    c.nro_restaurante,
+    c.nro_contenido,
+    c.contenido_a_publicar,
+    c.imagen_a_publicar,
+    c.publicado,
+    c.costo_click,
+    c.nro_sucursal
+FROM dbo.contenidos c
+WHERE c.nro_restaurante = @nro_restaurante
+  AND c.publicado = 0;
+
+-- 2) Marcar como publicados
+UPDATE dbo.contenidos
+SET publicado = 1
+WHERE nro_restaurante = @nro_restaurante
+  AND publicado = 0;
+
+COMMIT;
+END TRY
+BEGIN CATCH
+IF XACT_STATE() <> 0
+            ROLLBACK;
+
+        THROW;
+END CATCH
+END;
+GO
+
+--para el procesamiento batch
+select * from dbo.contenidos
+update dbo.contenidos
+set publicado=0
