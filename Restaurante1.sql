@@ -812,11 +812,11 @@ GO
 --EXEC dbo.get_info_restaurante_rs @nro_restaurante = 1;
 
 
-CREATE OR ALTER PROCEDURE dbo.sp_clicks_contenidos_insertar
+        CREATE OR ALTER PROCEDURE dbo.sp_clicks_contenidos_insertar
     @nro_restaurante      INT,
     @nro_contenido        INT,
-    @nro_cliente          INT         = NULL,      -- puede venir NULL
-    @fecha_hora_registro  DATETIME2   = NULL       -- opcional; default = ahora
+    @correo_cliente       NVARCHAR(160) = NULL,   -- nuevo parámetro
+    @fecha_hora_registro  DATETIME2     = NULL    -- opcional; default = ahora
     AS
 BEGIN
     SET NOCOUNT ON;
@@ -825,12 +825,22 @@ BEGIN
     DECLARE @ahora DATETIME2 = ISNULL(@fecha_hora_registro, SYSUTCDATETIME());
     DECLARE @costo DECIMAL(12,2);
     DECLARE @nro_click INT;
+    DECLARE @nro_cliente_resuelto INT = NULL;
+
+    -- 0) Resolver nro_cliente a partir del correo (si viene)
+    IF @correo_cliente IS NOT NULL
+BEGIN
+SELECT @nro_cliente_resuelto = c.nro_cliente
+FROM dbo.clientes c
+WHERE c.correo = @correo_cliente;
+-- si no existe, queda NULL (correcto)
+END
 
     -- Aislar para evitar nro_click duplicados en concurrencia
 SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 BEGIN TRAN;
 
-    -- 1) Obtener costo desde contenidos (y validar existencia)
+        -- 1) Obtener costo desde contenidos (y validar existencia)
 SELECT @costo = c.costo_click
 FROM dbo.contenidos AS c WITH (UPDLOCK, HOLDLOCK)
 WHERE c.nro_restaurante = @nro_restaurante
@@ -839,10 +849,10 @@ WHERE c.nro_restaurante = @nro_restaurante
 IF @costo IS NULL
 BEGIN
 ROLLBACK;
-;THROW 50010, 'No existe contenido para ese restaurante/contenido o costo_click NULL.', 1;
+THROW 50010, 'No existe contenido para ese restaurante/contenido o costo_click NULL.', 1;
 END
 
-    -- 2) Calcular siguiente nro_click incremental por (restaurante, contenido)
+        -- 2) Calcular siguiente nro_click incremental por (restaurante, contenido)
 SELECT @nro_click = ISNULL(MAX(cc.nro_click), 0) + 1
 FROM dbo.clicks_contenidos AS cc WITH (UPDLOCK, HOLDLOCK)
 WHERE cc.nro_restaurante = @nro_restaurante
@@ -852,18 +862,19 @@ WHERE cc.nro_restaurante = @nro_restaurante
 INSERT INTO dbo.clicks_contenidos
 (nro_restaurante, nro_contenido, nro_click, fecha_hora_registro, nro_cliente, costo_click)
 VALUES
-    (@nro_restaurante, @nro_contenido, @nro_click, @ahora, @nro_cliente, @costo);
+    (@nro_restaurante, @nro_contenido, @nro_click, @ahora, @nro_cliente_resuelto, @costo);
 
 COMMIT;
 
--- 4) Devolver el registro insertado (útil para log/confirmación)
+-- 4) Devolver el registro insertado
 SELECT
-    @nro_restaurante   AS nro_restaurante,
-    @nro_contenido     AS nro_contenido,
-    @nro_click         AS nro_click,
-    @ahora             AS fecha_hora_registro,
-    @nro_cliente       AS nro_cliente,
-    @costo             AS costo_click;
+    @nro_restaurante        AS nro_restaurante,
+    @nro_contenido          AS nro_contenido,
+    @nro_click              AS nro_click,
+    @ahora                  AS fecha_hora_registro,
+    @nro_cliente_resuelto   AS nro_cliente,
+    @correo_cliente         AS correo_cliente,
+    @costo                  AS costo_click;
 END;
 GO
 

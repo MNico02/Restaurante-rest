@@ -77,7 +77,7 @@ public class Restaurante1Repository {
         SqlParameterSource params = new MapSqlParameterSource()
                 .addValue("nro_restaurante",    nroRestaurante, Types.INTEGER)
                 .addValue("nro_contenido",      nroContenido,   Types.INTEGER)
-                .addValue("nro_cliente",        null,     Types.INTEGER)
+                .addValue("correo_cliente",        data.getCorreo_cliente(),     Types.VARCHAR)
                 .addValue("fecha_hora_registro",null,        Types.TIMESTAMP);
 
         try {
