@@ -158,22 +158,17 @@ public class Restaurante1Repository {
         restaurante.setRazonSocial(getStr(r1.get("razon_social")));
         restaurante.setCuit(getStr(r1.get("cuit")));
 
-        // 2) Contenidos generales del restaurante
+        // OJO: ya no cargamos contenidos acá
+        restaurante.setContenidos(new ArrayList<>());
+
+        // 2) Sucursales
         List<Map<String, Object>> rs2 = castRS(out.get("#result-set-2"));
-        List<ContenidoBean> contenidosRest = new ArrayList<>();
+        Map<Integer, SucursalBean> sucursalesMap = new LinkedHashMap<>();
+
         if (rs2 != null) {
             for (Map<String, Object> row : rs2) {
-                contenidosRest.add(mapContenido(row, null));
-            }
-        }
-        restaurante.setContenidos(contenidosRest);
-
-        // 3) Sucursales
-        List<Map<String, Object>> rs3 = castRS(out.get("#result-set-3"));
-        Map<Integer, SucursalBean> sucursalesMap = new LinkedHashMap<>();
-        if (rs3 != null) {
-            for (Map<String, Object> row : rs3) {
                 int nroSuc = getInt(row.get("nro_sucursal"));
+
                 SucursalBean s = new SucursalBean();
                 s.setNroSucursal(nroSuc);
                 s.setNomSucursal(getStr(row.get("nom_sucursal")));
@@ -190,39 +185,67 @@ public class Restaurante1Repository {
                 s.setMinTolerenciaReserva(getInt(row.get("min_tolerencia_reserva")));
                 s.setNroCategoria(getInt(row.get("nro_categoria")));
                 s.setCategoriaPrecio(getStr(row.get("categoria_precio")));
-                s.setContenidos(new ArrayList<>());
+
+                // Colecciones
+                s.setContenidos(new ArrayList<>());      // queda vacío, se carga por otro SP
                 s.setZonas(new ArrayList<>());
+                s.setTurnos(new ArrayList<>());          // IMPORTANTE: tu SucursalBean debe tenerlo
+                s.setZonasTurnos(new ArrayList<>());     // idem
                 s.setEstilos(new ArrayList<>());
                 s.setEspecialidades(new ArrayList<>());
                 s.setTiposComidas(new ArrayList<>());
+
                 sucursalesMap.put(nroSuc, s);
             }
         }
 
-        // 4) Contenidos por sucursal
-        List<Map<String, Object>> rs4 = castRS(out.get("#result-set-4"));
-        if (rs4 != null) {
-            for (Map<String, Object> row : rs4) {
-                Integer nroSuc = getIntObj(row.get("nro_sucursal"));
-                ContenidoBean c = mapContenido(row, nroSuc);
-                SucursalBean s = sucursalesMap.get(nroSuc);
-                if (s != null) s.getContenidos().add(c);
-            }
-        }
-
-        // 5) Zonas por sucursal
-        List<Map<String, Object>> rs5 = castRS(out.get("#result-set-5"));
-        if (rs5 != null) {
-            for (Map<String, Object> row : rs5) {
+        // 3) Zonas por sucursal
+        List<Map<String, Object>> rs3 = castRS(out.get("#result-set-3"));
+        if (rs3 != null) {
+            for (Map<String, Object> row : rs3) {
                 int nroSuc = getInt(row.get("nro_sucursal"));
+
                 ZonaBean z = new ZonaBean();
                 z.setCodZona(getInt(row.get("cod_zona")));
                 z.setNomZona(getStr(row.get("nom_zona")));
                 z.setCantComensales(getInt(row.get("cant_comensales")));
                 z.setPermiteMenores(getBool(row.get("permite_menores")));
                 z.setHabilitada(getBool(row.get("habilitada")));
+
                 SucursalBean s = sucursalesMap.get(nroSuc);
                 if (s != null) s.getZonas().add(z);
+            }
+        }
+
+        // 4) Turnos por sucursal
+        List<Map<String, Object>> rs4 = castRS(out.get("#result-set-4"));
+        if (rs4 != null) {
+            for (Map<String, Object> row : rs4) {
+                int nroSuc = getInt(row.get("nro_sucursal"));
+
+                TurnoBean t = new TurnoBean();
+                t.setHoraDesde(row.get("hora_reserva") != null ? row.get("hora_reserva").toString() : null);
+                t.setHoraHasta(row.get("hora_hasta") != null ? row.get("hora_hasta").toString() : null);
+                t.setHabilitado(getBool(row.get("habilitado")));
+
+                SucursalBean s = sucursalesMap.get(nroSuc);
+                if (s != null) s.getTurnos().add(t);
+            }
+        }
+
+        // 5) Zonas-Turnos por sucursal
+        List<Map<String, Object>> rs5 = castRS(out.get("#result-set-5"));
+        if (rs5 != null) {
+            for (Map<String, Object> row : rs5) {
+                int nroSuc = getInt(row.get("nro_sucursal"));
+
+                ZonaTurnoBean zt = new ZonaTurnoBean();
+                zt.setCodZona(getInt(row.get("cod_zona")));
+                zt.setHoraDesde(row.get("hora_reserva") != null ? row.get("hora_reserva").toString() : null);
+                zt.setPermiteMenores(getBool(row.get("permite_menores")));
+
+                SucursalBean s = sucursalesMap.get(nroSuc);
+                if (s != null) s.getZonasTurnos().add(zt);
             }
         }
 
@@ -231,10 +254,12 @@ public class Restaurante1Repository {
         if (rs6 != null) {
             for (Map<String, Object> row : rs6) {
                 int nroSuc = getInt(row.get("nro_sucursal"));
+
                 EstiloBean e = new EstiloBean();
                 e.setNroEstilo(getInt(row.get("nro_estilo")));
                 e.setNomEstilo(getStr(row.get("nom_estilo")));
                 e.setHabilitado(getBool(row.get("habilitado")));
+
                 SucursalBean s = sucursalesMap.get(nroSuc);
                 if (s != null) s.getEstilos().add(e);
             }
@@ -245,10 +270,12 @@ public class Restaurante1Repository {
         if (rs7 != null) {
             for (Map<String, Object> row : rs7) {
                 int nroSuc = getInt(row.get("nro_sucursal"));
+
                 EspecialidadBean e = new EspecialidadBean();
                 e.setNroRestriccion(getInt(row.get("nro_restriccion")));
                 e.setNomRestriccion(getStr(row.get("nom_restriccion")));
                 e.setHabilitada(getBool(row.get("habilitada")));
+
                 SucursalBean s = sucursalesMap.get(nroSuc);
                 if (s != null) s.getEspecialidades().add(e);
             }
@@ -259,10 +286,12 @@ public class Restaurante1Repository {
         if (rs8 != null) {
             for (Map<String, Object> row : rs8) {
                 int nroSuc = getInt(row.get("nro_sucursal"));
+
                 TipoComidaBean tc = new TipoComidaBean();
                 tc.setNroTipoComida(getInt(row.get("nro_tipo_comida")));
                 tc.setNomTipoComida(getStr(row.get("nom_tipo_comida")));
                 tc.setHabilitado(getBool(row.get("habilitado")));
+
                 SucursalBean s = sucursalesMap.get(nroSuc);
                 if (s != null) s.getTiposComidas().add(tc);
             }

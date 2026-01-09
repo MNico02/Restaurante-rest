@@ -1,6 +1,9 @@
+
+-------------------------------------------------------
+
 /* ============================================================
-   RESET: eliminar tablas hijas -> padres (evita errores de FK)
-   ============================================================*/
+  RESET: eliminar tablas hijas -> padres (evita errores de FK)
+  ============================================================*/
 IF OBJECT_ID('dbo.reservas_sucursales','U') IS NOT NULL DROP TABLE dbo.reservas_sucursales;
 IF OBJECT_ID('dbo.estilos_sucursales','U') IS NOT NULL DROP TABLE dbo.estilos_sucursales;
 IF OBJECT_ID('dbo.especialidades_alimentarias_sucursales','U') IS NOT NULL DROP TABLE dbo.especialidades_alimentarias_sucursales;
@@ -24,7 +27,6 @@ IF OBJECT_ID('dbo.restaurantes','U') IS NOT NULL DROP TABLE dbo.restaurantes;
 IF OBJECT_ID('dbo.localidades','U') IS NOT NULL DROP TABLE dbo.localidades;
 IF OBJECT_ID('dbo.provincias','U') IS NOT NULL DROP TABLE dbo.provincias;
 GO
-
 
 /* =======================
    DIMENSIONES / LOOKUPS
@@ -335,19 +337,29 @@ END;
 GO
 ---------------------------------------------------------
 
-
+---         INSERTS
 
 /* =======================
    Provincias y Localidades
    =======================*/
-INSERT INTO dbo.provincias (cod_provincia, nom_provincia) VALUES
-(14, N'C�rdoba');
+
+
+INSERT INTO dbo.provincias (cod_provincia, nom_provincia)
+VALUES (1,N'Córdoba'), (2,N'Santa Fe'), (3,N'Buenos Aires');
 
 INSERT INTO dbo.localidades (nro_localidad, nom_localidad, cod_provincia) VALUES
-                                                                              (1001, N'Alta C�rdoba', 14),
-                                                                              (1002, N'General Paz', 14),
-                                                                              (1003, N'Nueva C�rdoba', 14),
-                                                                              (1004, N'Centro', 14);
+                                                                              (1,N'Córdoba Capital', 1),
+                                                                              (2,N'Villa María', 1),
+                                                                              (3,N'Río Cuarto', 1);
+
+INSERT INTO dbo.localidades (nro_localidad,nom_localidad, cod_provincia)
+VALUES (4,N'Santa Fe Capital', 2),
+       (5,N'Rosario', 2);
+
+
+INSERT INTO dbo.localidades (nro_localidad,nom_localidad, cod_provincia)
+VALUES (6,N'La Plata', 3),
+       (7,N'Mar del Plata', 3);
 
 /* =======================
    Categor�as de precios
@@ -384,7 +396,7 @@ INSERT INTO dbo.estilos (nro_estilo, nom_estilo) VALUES
    Restaurante principal
    =======================*/
 INSERT INTO dbo.restaurantes (nro_restaurante, razon_social, cuit) VALUES
-    (1, N'La Bella Pizza', '30-12345678-9');
+    (1, N'El millonario', N'30-91245678-9');
 
 /* =======================
    Sucursales (4 en total)
@@ -393,65 +405,48 @@ INSERT INTO dbo.sucursales
 (nro_restaurante, nro_sucursal, nom_sucursal, calle, nro_calle, barrio, nro_localidad, cod_postal, telefonos,
  total_comensales, min_tolerencia_reserva, nro_categoria)
 VALUES
-    (1, 1, N'Alta C�rdoba',   N'Avenida Juan B. Justo', N'1500', N'Alta C�rdoba',   1001, N'5000', N'351-5551001', 60, 15, 2),
-    (1, 2, N'General Paz',    N'25 de Mayo',           N'800',  N'General Paz',    1002, N'5000', N'351-5551002', 80, 10, 3),
-    (1, 3, N'Nueva C�rdoba',  N'Obispo Trejo',         N'1200', N'Nueva C�rdoba',  1003, N'5000', N'351-5551003', 70, 10, 2),
-    (1, 4, N'Centro',         N'9 de Julio',           N'300',  N'Centro',         1004, N'5000', N'351-5551004', 100, 20, 3);
+    (1, 1,N'Casa Central El millonario',  N'Av. Siempreviva', 742, N'Centro',   1, N'5000', N'351-5551001', 60, 15, 2),
+    (1, 2,N'Sucursal norte El millonario',    N'25 de Mayo',    742,  N'General Paz',    2, N'5000', N'351-5551002', 80, 10, 3)
 
 
 
-/* Alta C�rdoba: total 60 */
-INSERT INTO dbo.zonas_sucursales
+    INSERT INTO dbo.zonas_sucursales
 (nro_restaurante, nro_sucursal, cod_zona, cant_comensales, permite_menores, habilitada)
 VALUES
     (1,1,1,40,1,1), (1,1,2,20,1,1);
 
-/* General Paz: total 80 */
+
 INSERT INTO dbo.zonas_sucursales
 (nro_restaurante, nro_sucursal, cod_zona, cant_comensales, permite_menores, habilitada)
 VALUES
     (1,2,1,50,1,1), (1,2,2,30,1,1);
 
-/* Nueva C�rdoba: total 70 */
-INSERT INTO dbo.zonas_sucursales
-(nro_restaurante, nro_sucursal, cod_zona, cant_comensales, permite_menores, habilitada)
-VALUES
-    (1,3,1,50,1,1), (1,3,2,20,1,1);
-
-/* Centro: total 100 */
-INSERT INTO dbo.zonas_sucursales
-(nro_restaurante, nro_sucursal, cod_zona, cant_comensales, permite_menores, habilitada)
-VALUES
-    (1,4,1,60,1,1), (1,4,2,30,1,1), (1,4,3,10,0,1);
 
 
 INSERT INTO dbo.turnos_sucursales (nro_restaurante, nro_sucursal, hora_reserva, hora_hasta, habilitado) VALUES
 -- Almuerzo
-(1,1,'12:00:00','15:00:00',1),(1,2,'12:00:00','15:00:00',1),(1,3,'12:00:00','15:00:00',1),(1,4,'12:00:00','15:00:00',1),
+(1,1,'12:00:00','15:00:00',1),(1,2,'12:00:00','15:00:00',1),
 -- Cena
-(1,1,'20:00:00','23:00:00',1),(1,2,'20:00:00','23:00:00',1),(1,3,'20:00:00','23:00:00',1),(1,4,'20:00:00','23:00:00',1);
+(1,1,'20:00:00','23:00:00',1),(1,2,'20:00:00','23:00:00',1);
 
+select * from turnos_sucursales
 
 
 /* Todas las sucursales sirven Italiana tradicional */
-INSERT INTO dbo.tipos_comidas_sucursales (nro_restaurante, nro_sucursal, nro_tipo_comida, habilitado)
-VALUES (1,1,1,1),(1,2,1,1),(1,3,1,1),(1,4,1,1);
+    INSERT INTO dbo.tipos_comidas_sucursales (nro_restaurante, nro_sucursal, nro_tipo_comida, habilitado)
+VALUES (1,1,1,1),(1,2,1,1);
 
 /* Todas las sucursales con estilos Casual y Familiar */
 INSERT INTO dbo.estilos_sucursales (nro_restaurante, nro_sucursal, nro_estilo, habilitado)
 VALUES
     (1,1,1,1),(1,1,2,1),
-    (1,2,1,1),(1,2,2,1),
-    (1,3,1,1),(1,3,2,1),
-    (1,4,1,1),(1,4,2,1);
+    (1,2,1,1),(1,2,2,1);
 
 /* Especialidades alimentarias (solo vegetariano y cel�aco habilitados) */
 INSERT INTO dbo.especialidades_alimentarias_sucursales (nro_restaurante, nro_sucursal, nro_restriccion, habilitada)
 VALUES
     (1,1,1,1),(1,1,2,1),
-    (1,2,1,1),(1,2,2,1),
-    (1,3,1,1),(1,3,2,1),
-    (1,4,1,1),(1,4,2,1);
+    (1,2,1,1),(1,2,2,1);
 
 
 /* =======================
@@ -472,27 +467,10 @@ VALUES
     (1,2,1,'12:00:00',1),(1,2,1,'20:00:00',1),  -- Sal�n
     (1,2,2,'12:00:00',1),(1,2,2,'20:00:00',1);  -- Terraza
 
-/* =======================
-   Nueva C�rdoba (sucursal 3, zonas 1 y 2)
-   =======================*/
-INSERT INTO dbo.zonas_turnos_sucursales
-(nro_restaurante, nro_sucursal, cod_zona, hora_reserva, permite_menores)
-VALUES
-    (1,3,1,'12:00:00',1),(1,3,1,'20:00:00',1),  -- Sal�n
-    (1,3,2,'12:00:00',1),(1,3,2,'20:00:00',1);  -- Terraza
-
-/* =======================
-   Centro (sucursal 4, zonas 1, 2 y 3)
-   =======================*/
-INSERT INTO dbo.zonas_turnos_sucursales
-(nro_restaurante, nro_sucursal, cod_zona, hora_reserva, permite_menores)
-VALUES
-    (1,4,1,'12:00:00',1),(1,4,1,'20:00:00',1),  -- Sal�n
-    (1,4,2,'12:00:00',1),(1,4,2,'20:00:00',1),  -- Terraza
-    (1,4,3,'12:00:00',0),(1,4,3,'20:00:00',0);  -- Privado (no menores)
 
 go
 ---------------------------------------------------------------
+----Procedimientos
 
 
 CREATE OR ALTER PROCEDURE dbo.ins_cliente_reserva_sucursal
@@ -583,11 +561,7 @@ END CATCH
 END
 GO
 
-SELECT *
-FROM dbo.zonas_turnos_sucursales
-WHERE nro_restaurante = 1
-  AND nro_sucursal    = 1
-    go
+
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
@@ -683,7 +657,6 @@ END
 GO
 
 
-
 CREATE OR ALTER PROCEDURE dbo.get_info_restaurante_rs
     @nro_restaurante INT
     AS
@@ -704,20 +677,7 @@ SELECT
 FROM dbo.restaurantes r
 WHERE r.nro_restaurante = @nro_restaurante;
 
-/* 2) Contenidos (generales del restaurante; nro_sucursal IS NULL) */
-SELECT
-    c.nro_restaurante,
-    c.nro_contenido,
-    c.contenido_a_publicar,
-    c.imagen_a_publicar,
-    c.publicado,
-    c.costo_click
-FROM dbo.contenidos c
-WHERE c.nro_restaurante = @nro_restaurante
-  AND c.nro_sucursal IS NULL
-ORDER BY c.nro_contenido;
-
-/* 3) Sucursales */
+/* 2) Sucursales */
 SELECT
     s.nro_restaurante,
     s.nro_sucursal,
@@ -742,21 +702,7 @@ FROM dbo.sucursales s
 WHERE s.nro_restaurante = @nro_restaurante
 ORDER BY s.nro_sucursal;
 
-/* 4) Contenidos por sucursal (nro_sucursal NOT NULL) */
-SELECT
-    c.nro_restaurante,
-    c.nro_sucursal,
-    c.nro_contenido,
-    c.contenido_a_publicar,
-    c.imagen_a_publicar,
-    c.publicado,
-    c.costo_click
-FROM dbo.contenidos c
-WHERE c.nro_restaurante = @nro_restaurante
-  AND c.nro_sucursal IS NOT NULL
-ORDER BY c.nro_sucursal, c.nro_contenido;
-
-/* 5) Zonas por sucursal */
+/* 3) Zonas por sucursal */
 SELECT
     zs.nro_restaurante,
     zs.nro_sucursal,
@@ -769,6 +715,28 @@ FROM dbo.zonas_sucursales zs
          INNER JOIN dbo.zonas z ON z.cod_zona = zs.cod_zona
 WHERE zs.nro_restaurante = @nro_restaurante
 ORDER BY zs.nro_sucursal, zs.cod_zona;
+
+/* 4) Turnos por sucursal */
+SELECT
+    t.nro_restaurante,
+    t.nro_sucursal,
+    t.hora_reserva,
+    t.hora_hasta,
+    t.habilitado
+FROM dbo.turnos_sucursales t
+WHERE t.nro_restaurante = @nro_restaurante
+ORDER BY t.nro_sucursal, t.hora_reserva;
+
+/* 5) Zonas-Turnos por sucursal */
+SELECT
+    zts.nro_restaurante,
+    zts.nro_sucursal,
+    zts.cod_zona,
+    zts.hora_reserva,
+    zts.permite_menores
+FROM dbo.zonas_turnos_sucursales zts
+WHERE zts.nro_restaurante = @nro_restaurante
+ORDER BY zts.nro_sucursal, zts.cod_zona, zts.hora_reserva;
 
 /* 6) Estilos por sucursal */
 SELECT
@@ -805,11 +773,10 @@ FROM dbo.tipos_comidas_sucursales tcs
          INNER JOIN dbo.tipos_comidas tc ON tc.nro_tipo_comida = tcs.nro_tipo_comida
 WHERE tcs.nro_restaurante = @nro_restaurante
 ORDER BY tcs.nro_sucursal, tcs.nro_tipo_comida;
+
 END;
 GO
 
-
---EXEC dbo.get_info_restaurante_rs @nro_restaurante = 1;
 
 
         CREATE OR ALTER PROCEDURE dbo.sp_clicks_contenidos_insertar
@@ -891,19 +858,19 @@ INSERT INTO dbo.contenidos
 (nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
 (1, 1,
  N'Menú Tradicional "Abuela" (Sin gluten): empanadas de carne al horno con tapa de maíz + sorrentinos de ricota y nuez en salsa fileto. Precio medio. Ideal para compartir.',
- N'https://img.example.com/r1/s1_trad_abue_sg.jpg', 1, 0.10, 1);
+ N'https://img.example.com/r1/s1_trad_abue_sg.jpg', 0, 0.10, 1);
 
 INSERT INTO dbo.contenidos
 (nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
     (1, 2,
      N'Combo Argentino & Italiano (Sin gluten): milanesa napolitana con papas al horno + penne rigate al pesto. Estilo tradicional, porciones generosas, precio medio.',
-     N'https://img.example.com/r1/s1_arg_ita_sg_combo.jpg', 1, 0.10, 1);
+     N'https://img.example.com/r1/s1_arg_ita_sg_combo.jpg', 0, 0.10, 1);
 
 INSERT INTO dbo.contenidos
 (nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
     (1, 3,
      N'Noche de Pastas Caseras (opción Sin gluten): tallarines amasados a la vista con bolognesa o tuco de cocción lenta + copa de vino de la casa. Ambiente tradicional.',
-     N'https://img.example.com/r1/s1_pastas_sg.jpg', 1, 0.10, 1);
+     N'https://img.example.com/r1/s1_pastas_sg.jpg', 0, 0.10, 1);
 
 
 -- ===========================
@@ -913,19 +880,20 @@ INSERT INTO dbo.contenidos
 (nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
     (1, 4,
      N'Tacos Degustación Premium (Vegetarianos): set de 6 tacos (hongos asados, calabaza especiada, frijoles y queso), salsas caseras y guacamole. Estilo casual, experiencia gourmet.',
-     N'https://img.example.com/r1/s2_tacos_veg_premium.jpg', 1, 0.10, 2);
+     N'https://img.example.com/r1/s2_tacos_veg_premium.jpg', 0, 0.10, 2);
 
 INSERT INTO dbo.contenidos
 (nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
     (1, 5,
      N'Burrito Bowl Verde (Vegetariano): arroz cilantro-lima, mix de hojas, porotos negros, fajitas de verduras, pico de gallo y crema ácida. Presentación premium, servicio casual.',
-     N'https://img.example.com/r1/s2_burrito_bowl_veg.jpg', 1, 0.10, 2);
+     N'https://img.example.com/r1/s2_burrito_bowl_veg.jpg', 0, 0.10, 2);
 
 INSERT INTO dbo.contenidos
 (nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
     (1, 6,
      N'Cena Mexicana Premium: enchiladas rojas vegetarianas + maridaje con tequila/agua fresca. Estilo casual chic, producto de alta calidad, ideal para celebración.',
-     N'https://img.example.com/r1/s2_mex_premium_dinner.jpg', 1, 0.10, 2);
+     N'https://img.example.com/r1/s2_mex_premium_dinner.jpg', 0, 0.10, 2);
+go
 
 
 go
