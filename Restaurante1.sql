@@ -952,3 +952,189 @@ GO
 select * from dbo.contenidos
 update dbo.contenidos
 set publicado=0
+
+
+
+
+CREATE OR ALTER PROCEDURE dbo.ins_cliente_reserva_sucursal
+    -- Cliente
+    @nro_cliente        INT              = NULL,
+    @apellido           NVARCHAR(80)     = NULL,
+    @nombre             NVARCHAR(80)     = NULL,
+    @correo             NVARCHAR(160)    = NULL,
+    @telefonos          NVARCHAR(80)     = NULL,
+
+    -- Reserva
+    @cod_reserva        UNIQUEIDENTIFIER = NULL,  -- ignorado (DEFAULT NEWSEQUENTIALID())
+    @fecha_reserva      DATE,
+    @hora_reserva       TIME(0),
+    @nro_restaurante    INT,
+    @nro_sucursal       INT,
+    @cod_zona           INT,
+    @cant_adultos       INT,
+    @cant_menores       INT,
+    @costo_reserva      DECIMAL(12,2)    = 0,
+    @cancelada          BIT              = 0,
+    @fecha_cancelacion  DATE             = NULL,
+
+    -- salida (si la querés usar desde Java como OUTPUT)
+    @o_cod_reserva      UNIQUEIDENTIFIER OUTPUT
+    AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+BEGIN TRY
+BEGIN TRAN;
+
+        ------------------------------------------------------------
+        -- 0) Validaciones básicas
+        ------------------------------------------------------------
+        DECLARE @cant_personas INT = ISNULL(@cant_adultos,0) + ISNULL(@cant_menores,0);
+
+        IF @cant_personas <= 0
+            THROW 51010, 'La cantidad de personas debe ser mayor a 0.', 1;
+
+        IF @correo IS NULL AND @nro_cliente IS NULL
+            THROW 51011, 'Debe informar nro_cliente o correo.', 1;
+
+        ------------------------------------------------------------
+        -- 1) Validar zona existe y habilitada + cupo base + permite menores
+        ------------------------------------------------------------
+        DECLARE @capacidad_total INT;
+        DECLARE @permite_menores BIT;
+        DECLARE @zona_habilitada BIT;
+
+SELECT
+    @capacidad_total = zs.cant_comensales,
+    @permite_menores = zs.permite_menores,
+    @zona_habilitada = zs.habilitada
+FROM dbo.zonas_sucursales zs
+WHERE zs.nro_restaurante = @nro_restaurante
+  AND zs.nro_sucursal    = @nro_sucursal
+  AND zs.cod_zona        = @cod_zona;
+
+IF @capacidad_total IS NULL OR @zona_habilitada <> 1
+            THROW 51012, 'La zona no existe o no está habilitada para la sucursal.', 1;
+
+        IF @cant_menores > 0 AND @permite_menores <> 1
+            THROW 51013, 'La zona no permite menores.', 1;
+
+        ------------------------------------------------------------
+        -- 2) Validar turno existe/habilitado y asociado a la zona
+        ------------------------------------------------------------
+        IF NOT EXISTS (
+            SELECT 1
+            FROM dbo.turnos_sucursales t
+            WHERE t.nro_restaurante = @nro_restaurante
+              AND t.nro_sucursal    = @nro_sucursal
+              AND t.hora_reserva    = @hora_reserva
+              AND t.habilitado      = 1
+        )
+            THROW 51014, 'El turno no existe o no está habilitado para la sucursal.', 1;
+
+        IF NOT EXISTS (
+            SELECT 1
+            FROM dbo.zonas_turnos_sucursales zts
+            WHERE zts.nro_restaurante = @nro_restaurante
+              AND zts.nro_sucursal    = @nro_sucursal
+              AND zts.cod_zona        = @cod_zona
+              AND zts.hora_reserva    = @hora_reserva
+        )
+            THROW 51015, 'La zona no está habilitada para ese turno.', 1;
+
+        -- (Opcional) Si querés validar menores por turno:
+        -- IF @cant_menores > 0 AND EXISTS(
+        --     SELECT 1 FROM dbo.zonas_turnos_sucursales zts
+        --     WHERE zts.nro_restaurante=@nro_restaurante AND zts.nro_sucursal=@nro_sucursal
+        --       AND zts.cod_zona=@cod_zona AND zts.hora_reserva=@hora_reserva
+        --       AND ISNULL(zts.permite_menores,1)=0
+        -- )
+        --     THROW 51016, 'Ese turno/zona no permite menores.', 1;
+
+        ------------------------------------------------------------
+        -- 3) Resolver cliente (reusar por correo o insertar)
+        ------------------------------------------------------------
+        DECLARE @cliente_id INT;
+
+        IF @nro_cliente IS NOT NULL
+BEGIN
+            SET @cliente_id = @nro_cliente;
+END
+ELSE
+BEGIN
+SELECT @cliente_id = c.nro_cliente
+FROM dbo.clientes c
+WHERE c.correo = @correo;
+
+IF @cliente_id IS NULL
+BEGIN
+INSERT INTO dbo.clientes (apellido, nombre, correo, telefonos)
+VALUES (@apellido, @nombre, @correo, @telefonos);
+
+SET @cliente_id = SCOPE_IDENTITY();
+END
+END
+
+        ------------------------------------------------------------
+        -- 4) Validar disponibilidad REAL (concurrencia controlada)
+        --    Lockear reservas existentes del mismo turno/fecha/zona
+        ------------------------------------------------------------
+        DECLARE @ocupados INT;
+
+SELECT
+    @ocupados = SUM(ISNULL(r.cant_adultos,0) + ISNULL(r.cant_menores,0))
+FROM dbo.reservas_sucursales r WITH (UPDLOCK, HOLDLOCK)
+WHERE r.nro_restaurante = @nro_restaurante
+  AND r.nro_sucursal    = @nro_sucursal
+  AND r.cod_zona        = @cod_zona
+  AND r.fecha_reserva   = @fecha_reserva
+  AND r.hora_reserva    = @hora_reserva
+  AND ISNULL(r.cancelada,0) = 0;
+
+SET @ocupados = ISNULL(@ocupados, 0);
+
+        IF (@capacidad_total - @ocupados) < @cant_personas
+            THROW 51020, 'No hay cupo disponible para ese turno y zona.', 1;
+
+        ------------------------------------------------------------
+        -- 5) Insertar reserva y devolver cod_reserva
+        ------------------------------------------------------------
+        DECLARE @t TABLE (cod_reserva UNIQUEIDENTIFIER);
+
+INSERT INTO dbo.reservas_sucursales
+(
+    nro_cliente, fecha_reserva, hora_reserva,
+    nro_restaurante, nro_sucursal, cod_zona,
+    cant_adultos, cant_menores, costo_reserva,
+    cancelada, fecha_cancelacion
+)
+    OUTPUT inserted.cod_reserva INTO @t
+VALUES
+    (
+    @cliente_id, @fecha_reserva, @hora_reserva,
+    @nro_restaurante, @nro_sucursal, @cod_zona,
+    @cant_adultos, @cant_menores, @costo_reserva,
+    @cancelada, @fecha_cancelacion
+    );
+
+-- set output param
+SELECT @o_cod_reserva = (SELECT TOP 1 cod_reserva FROM @t);
+
+COMMIT;
+
+-- Resultset para Java
+SELECT cod_reserva = @o_cod_reserva;
+
+END TRY
+BEGIN CATCH
+IF XACT_STATE() <> 0 ROLLBACK;
+
+        -- Mensaje amigable si choca UNIQUE de correo
+        IF ERROR_NUMBER() IN (2627,2601) AND CHARINDEX('AK_clientes_correo', ERROR_MESSAGE()) > 0
+            THROW 51030, 'El correo de cliente ya existe.', 1;
+
+        THROW;
+END CATCH
+END
+GO

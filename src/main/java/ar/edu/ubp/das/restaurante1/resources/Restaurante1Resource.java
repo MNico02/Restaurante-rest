@@ -1,6 +1,7 @@
 package ar.edu.ubp.das.restaurante1.resources;
 import ar.edu.ubp.das.restaurante1.beans.*;
 import ar.edu.ubp.das.restaurante1.repositories.Restaurante1Repository;
+import ar.edu.ubp.das.restaurante1.service.ReservaService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,19 +18,32 @@ public class Restaurante1Resource {
 
     @Autowired
     private Restaurante1Repository restaurante1Repository;
+    @Autowired
+    private ReservaService reservaService;
 
     /**
      * guarda en la base de datos del restaurante la reserva que le mando ristorino
      * Recive un reservaBean y devuelvel el codigo de reserva(String)
-     * @param reserva
+     * @param
      * @return codReserva
      */
     @PostMapping("/confirmarReserva")
-    public ResponseEntity<Map<String, String>> insertarReserva(@RequestBody ReservaBean reserva) {
-        String codReserva = restaurante1Repository.insReserva(reserva);
-        Map<String, String> response = new HashMap<>();
-        response.put("codReserva", codReserva);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<ConfirmarReservaResponse> confirmarReserva(@RequestBody ReservaRestauranteBean req) {
+
+        ConfirmarReservaResponse resp = reservaService.confirmarReserva(req);
+
+        if (resp.isSuccess()) {
+            return ResponseEntity.ok(resp);
+        }
+
+        // Si querés, diferenciás validación rápida vs negocio (cupo) por mensaje o por códigos
+        String msg = (resp.getMensaje() == null) ? "" : resp.getMensaje().toLowerCase();
+
+        if (msg.contains("inválida") || msg.contains("obligatorio") || msg.contains("incomplet")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(resp);
+        }
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(resp);
     }
 
     /**
