@@ -362,7 +362,7 @@ VALUES (6,N'La Plata', 3),
        (7,N'Mar del Plata', 3);
 
 /* =======================
-   Categor�as de precios
+   Categorías de precios
    =======================*/
 INSERT INTO dbo.categorias_precios (nro_categoria, nom_categoria) VALUES
                                                                       (1, N'Baja'), (2, N'Media'), (3, N'Alta');
@@ -383,7 +383,7 @@ INSERT INTO dbo.tipos_comidas (nro_tipo_comida, nom_tipo_comida) VALUES
    Especialidades alimentarias
    =======================*/
 INSERT INTO dbo.especialidades_alimentarias (nro_restriccion, nom_restriccion) VALUES
-                                                                                   (1, N'Vegetariano'), (2, N'Cel�aco');
+                                                                                   (1, N'Vegetariano'), (2, N'Celíaco');
 
 /* =======================
    Estilos
@@ -423,11 +423,24 @@ VALUES
 
 
 
-INSERT INTO dbo.turnos_sucursales (nro_restaurante, nro_sucursal, hora_reserva, hora_hasta, habilitado) VALUES
--- Almuerzo
-(1,1,'12:00:00','15:00:00',1),(1,2,'12:00:00','15:00:00',1),
--- Cena
-(1,1,'20:00:00','23:00:00',1),(1,2,'20:00:00','23:00:00',1);
+INSERT INTO dbo.turnos_sucursales
+(nro_restaurante, nro_sucursal, hora_reserva, hora_hasta, habilitado)
+VALUES
+-- ALMUERZO (1h30)
+(1,1,'12:00:00','13:30:00',1),
+(1,1,'13:30:00','15:00:00',1),
+(1,2,'12:00:00','13:30:00',1),
+(1,2,'13:30:00','15:00:00',1),
+
+-- CENA (hasta cierre)
+(1,1,'20:00:00','22:00:00',1),
+(1,1,'22:00:00','23:59:00',1),
+
+(1,2,'20:00:00','22:00:00',1),
+(1,2,'22:00:00','23:59:00',1);
+
+
+
 
 select * from turnos_sucursales
 
@@ -449,24 +462,22 @@ VALUES
     (1,2,1,1),(1,2,2,1);
 
 
-/* =======================
-   Alta C�rdoba (sucursal 1, zonas 1 y 2)
-   =======================*/
 INSERT INTO dbo.zonas_turnos_sucursales
 (nro_restaurante, nro_sucursal, cod_zona, hora_reserva, permite_menores)
 VALUES
-    (1,1,1,'12:00:00',1),(1,1,1,'20:00:00',1),  -- Sal�n
-    (1,1,2,'12:00:00',1),(1,1,2,'20:00:00',1);  -- Terraza
+-- Sucursal 1
+(1,1,1,'12:00:00',1),(1,1,1,'13:30:00',1),
+(1,1,1,'20:00:00',1),(1,1,1,'22:00:00',1),
 
-/* =======================
-   General Paz (sucursal 2, zonas 1 y 2)
-   =======================*/
-INSERT INTO dbo.zonas_turnos_sucursales
-(nro_restaurante, nro_sucursal, cod_zona, hora_reserva, permite_menores)
-VALUES
-    (1,2,1,'12:00:00',1),(1,2,1,'20:00:00',1),  -- Sal�n
-    (1,2,2,'12:00:00',1),(1,2,2,'20:00:00',1);  -- Terraza
+(1,1,2,'12:00:00',1),(1,1,2,'13:30:00',1),
+(1,1,2,'20:00:00',1),(1,1,2,'22:00:00',1),
 
+-- Sucursal 2
+(1,2,1,'12:00:00',1),(1,2,1,'13:30:00',1),
+(1,2,1,'20:00:00',1),(1,2,1,'22:00:00',1),
+
+(1,2,2,'12:00:00',1),(1,2,2,'13:30:00',1),
+(1,2,2,'20:00:00',1),(1,2,2,'22:00:00',1);
 
 go
 ---------------------------------------------------------------
@@ -858,19 +869,19 @@ INSERT INTO dbo.contenidos
 (nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
 (1, 1,
  N'Menú Tradicional "Abuela" (Sin gluten): empanadas de carne al horno con tapa de maíz + sorrentinos de ricota y nuez en salsa fileto. Precio medio. Ideal para compartir.',
- N'https://img.example.com/r1/s1_trad_abue_sg.jpg', 0, 0.10, 1);
+ N'https://media.elgourmet.com/recetas/cover/d886d9d83cdfbbb1e1e7aa1d395d796c_3_3_photo.png', 0, 0.10, 1);
 
 INSERT INTO dbo.contenidos
 (nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
     (1, 2,
      N'Combo Argentino & Italiano (Sin gluten): milanesa napolitana con papas al horno + penne rigate al pesto. Estilo tradicional, porciones generosas, precio medio.',
-     N'https://img.example.com/r1/s1_arg_ita_sg_combo.jpg', 0, 0.10, 1);
+     N'https://airescriollos.com.ar/wp-content/uploads/2020/11/Milanesa-de-Pollo-Napolitana.jpg', 0, 0.10, 1);
 
 INSERT INTO dbo.contenidos
 (nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
     (1, 3,
      N'Noche de Pastas Caseras (opción Sin gluten): tallarines amasados a la vista con bolognesa o tuco de cocción lenta + copa de vino de la casa. Ambiente tradicional.',
-     N'https://img.example.com/r1/s1_pastas_sg.jpg', 0, 0.10, 1);
+     N'https://cdn.recetasderechupete.com/wp-content/uploads/2020/11/Tallarines-rojos-con-pollo.jpg', 0, 0.10, 1);
 
 
 -- ===========================
@@ -880,19 +891,19 @@ INSERT INTO dbo.contenidos
 (nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
     (1, 4,
      N'Tacos Degustación Premium (Vegetarianos): set de 6 tacos (hongos asados, calabaza especiada, frijoles y queso), salsas caseras y guacamole. Estilo casual, experiencia gourmet.',
-     N'https://img.example.com/r1/s2_tacos_veg_premium.jpg', 0, 0.10, 2);
+     N'https://lastaquerias.com/wp-content/uploads/2022/11/tacos-pastor-gaacc26fa8_1920.jpg', 0, 0.10, 2);
 
 INSERT INTO dbo.contenidos
 (nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
     (1, 5,
      N'Burrito Bowl Verde (Vegetariano): arroz cilantro-lima, mix de hojas, porotos negros, fajitas de verduras, pico de gallo y crema ácida. Presentación premium, servicio casual.',
-     N'https://img.example.com/r1/s2_burrito_bowl_veg.jpg', 0, 0.10, 2);
+     N'https://www.melonsinjamon.com/wp-content/uploads/2022/07/burrito-bowl-vegano.jpg', 0, 0.10, 2);
 
 INSERT INTO dbo.contenidos
 (nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
     (1, 6,
      N'Cena Mexicana Premium: enchiladas rojas vegetarianas + maridaje con tequila/agua fresca. Estilo casual chic, producto de alta calidad, ideal para celebración.',
-     N'https://img.example.com/r1/s2_mex_premium_dinner.jpg', 0, 0.10, 2);
+     N'https://solnatural.bio/views/img/recipesphotos/97.jpg',0, 0.10, 2);
 go
 
 
