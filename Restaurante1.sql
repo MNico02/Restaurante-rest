@@ -266,11 +266,11 @@ CREATE TABLE dbo.reservas_sucursales(
                                         CONSTRAINT FK_rs_sucursales
                                             FOREIGN KEY (nro_restaurante, nro_sucursal)
                                                 REFERENCES dbo.sucursales(nro_restaurante, nro_sucursal),
-    -- Asegura zona v�lida para esa sucursal
+    -- Asegura zona válida para esa sucursal
                                         CONSTRAINT FK_rs_zonas_sucursales
                                             FOREIGN KEY (nro_restaurante, nro_sucursal, cod_zona)
                                                 REFERENCES dbo.zonas_sucursales(nro_restaurante, nro_sucursal, cod_zona),
-    -- Asegura turno v�lido para esa sucursal
+    -- Asegura turno válido para esa sucursal
                                         CONSTRAINT FK_rs_turnos_sucursales
                                             FOREIGN KEY (nro_restaurante, nro_sucursal, hora_reserva)
                                                 REFERENCES dbo.turnos_sucursales(nro_restaurante, nro_sucursal, hora_reserva),
@@ -371,7 +371,7 @@ INSERT INTO dbo.categorias_precios (nro_categoria, nom_categoria) VALUES
    Zonas disponibles
    =======================*/
 INSERT INTO dbo.zonas (cod_zona, nom_zona) VALUES
-                                               (1, N'Sal�n'), (2, N'Terraza'), (3, N'Patio');
+                                               (1, N'Saln'), (2, N'Terraza'), (3, N'Patio');
 
 /* =======================
    Tipos de comidas
@@ -455,7 +455,7 @@ VALUES
     (1,1,1,1),(1,1,2,1),
     (1,2,1,1),(1,2,2,1);
 
-/* Especialidades alimentarias (solo vegetariano y cel�aco habilitados) */
+/* Especialidades alimentarias (solo vegetariano y celíaco habilitados) */
 INSERT INTO dbo.especialidades_alimentarias_sucursales (nro_restaurante, nro_sucursal, nro_restriccion, habilitada)
 VALUES
     (1,1,1,1),(1,1,2,1),
@@ -598,7 +598,7 @@ BEGIN
         RETURN;
 END
 
-    -- Verificar que la zona exista y est� habilitada para la sucursal
+    -- Verificar que la zona exista y está habilitada para la sucursal
     IF NOT EXISTS (
         SELECT 1
         FROM dbo.zonas_sucursales zs
@@ -608,7 +608,7 @@ END
           AND zs.habilitada      = 1
     )
 BEGIN
-        -- Devuelve vac�o
+        -- Devuelve vacío
 SELECT CAST(NULL AS TIME(0)) AS hora_reserva,
        CAST(NULL AS TIME(0)) AS hora_hasta,
        NULL AS capacidad_total,
@@ -619,7 +619,7 @@ RETURN;
 END
 
     ;WITH Turnos AS (
-    /* Turnos v�lidos para la sucursal y que adem�s est�n asociados a la zona */
+    /* Turnos válidos para la sucursal y que además estén asociados a la zona */
     SELECT t.nro_restaurante, t.nro_sucursal, t.hora_reserva, t.hora_hasta
     FROM dbo.turnos_sucursales t
              INNER JOIN dbo.zonas_turnos_sucursales zts
