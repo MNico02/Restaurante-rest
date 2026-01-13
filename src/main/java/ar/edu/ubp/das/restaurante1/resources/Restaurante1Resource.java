@@ -37,7 +37,7 @@ public class Restaurante1Resource {
      * @param soliHorarioBean
      * @return
      */
-    @GetMapping("/consultarDisponibilidad")
+    @PostMapping("/consultarDisponibilidad")
     public ResponseEntity<List<HorarioBean>> obtenerHorarios(@RequestBody SoliHorarioBean soliHorarioBean) {
         List<HorarioBean> horarios = restaurante1Repository.getHorarios(soliHorarioBean);
         return ResponseEntity.ok(horarios);

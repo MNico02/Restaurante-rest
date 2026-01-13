@@ -229,7 +229,7 @@ public class Restaurante1Repository {
                 t.setHabilitado(getBool(row.get("habilitado")));
 
                 SucursalBean s = sucursalesMap.get(nroSuc);
-                if (s != null) s.getTurnos().add(t);
+                if (s != null) s.getTurnos().add(t);//prueba
             }
         }
 
