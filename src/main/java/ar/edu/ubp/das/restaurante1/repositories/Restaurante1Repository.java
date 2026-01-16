@@ -22,6 +22,49 @@ public class Restaurante1Repository {
 
     @Autowired
     private SimpleJdbcCallFactory jdbcCallFactory;
+    public ResponseBean modificarReserva(ModificarReservaReqBean data) {
+
+
+        SqlParameterSource params = new MapSqlParameterSource()
+                .addValue("cod_reserva_sucursal", data.getCodReservaSucursal(), Types.VARCHAR)
+                .addValue("fecha_reserva", java.sql.Date.valueOf(data.getFechaReserva()), Types.DATE)
+                .addValue("hora_reserva", java.sql.Time.valueOf(data.getHoraReserva()), Types.TIME)
+                .addValue("cod_zona", data.getCodZona(), Types.INTEGER)
+                .addValue("cant_adultos", data.getCantAdultos(), Types.INTEGER)
+                .addValue("cant_menores", data.getCantMenores(), Types.INTEGER);
+
+        try {
+            Map<String, Object> out =
+                    jdbcCallFactory.executeWithOutputs("modificar_reserva_por_codigo_sucursal", "dbo", params);
+
+            @SuppressWarnings("unchecked")
+            java.util.List<java.util.Map<String, Object>> rs =
+                    (java.util.List<java.util.Map<String, Object>>) out.get("#result-set-1");
+
+            if (rs == null || rs.isEmpty()) {
+                return new ResponseBean(false, "ERROR", "El SP no devolvió resultado (#result-set-1 vacío).");
+            }
+
+            java.util.Map<String, Object> row = rs.get(0);
+
+            // success (bit) puede venir como Boolean o Number
+            boolean success = false;
+            Object vSuccess = row.get("success");
+            if (vSuccess instanceof Boolean) success = (Boolean) vSuccess;
+            else if (vSuccess instanceof Number) success = ((Number) vSuccess).intValue() == 1;
+            else if (vSuccess != null) success = "1".equals(vSuccess.toString()) || "true".equalsIgnoreCase(vSuccess.toString());
+
+            String status = row.get("status") != null ? row.get("status").toString() : null;
+            String message = row.get("message") != null ? row.get("message").toString() : null;
+
+            // ✅ devolvemos tal cual el SP
+            return new ResponseBean(success, status, message);
+
+        } catch (Exception e) {
+            // ✅ Si algo explota (SQLException, etc), devolvemos ResponseBean uniforme
+            return new ResponseBean(false, "ERROR", e.getMessage());
+        }
+    }
 
     public String insReserva(ReservaBean data) {
         SqlParameterSource params = new MapSqlParameterSource()
@@ -65,7 +108,22 @@ public class Restaurante1Repository {
                 .addValue("menores",data.isMenores(), Types.BIT);
         return jdbcCallFactory.executeQuery("get_horarios_disponibles", "dbo", params, "", HorarioBean.class);
     }
+    public Map<String, Object> cancelarReservaPorCodigoSucursal(String codReservaSucursal) {
 
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("cod_reserva_sucursal", codReservaSucursal);
+
+        List<Map<String, Object>> rs = jdbcCallFactory.executeQueryAsMap(
+                "cancelar_reserva_por_codigo_sucursal",
+                "dbo",
+                params,
+                "result"
+        );
+
+        return rs.isEmpty()
+                ? Map.of("success", false, "status", "ERROR", "message", "SP no devolvió resultado.")
+                : rs.get(0);
+    }
     public String insClick(SoliClickBean data) {
 
         ContenidoKey key = parseCodContenidoRestauranteSplit(data.getCodContenidoRestaurante());

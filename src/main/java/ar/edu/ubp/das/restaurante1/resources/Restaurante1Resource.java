@@ -45,6 +45,16 @@ public class Restaurante1Resource {
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(resp);
     }
+    @PostMapping("/modificarReserva")
+    public ResponseEntity<ResponseBean> modificarReserva(@RequestBody ModificarReservaReqBean req) {
+
+       ResponseBean resp = restaurante1Repository.modificarReserva(req);
+
+
+            return ResponseEntity.ok(resp);
+
+    }
+
 
     /**
      * devuelve a ristorino una lista de horarios que dependen de la solicitud hecha por ristorino
@@ -56,6 +66,30 @@ public class Restaurante1Resource {
         List<HorarioBean> horarios = restaurante1Repository.getHorarios(soliHorarioBean);
         return ResponseEntity.ok(horarios);
     }
+
+    @PostMapping("/cancelarReserva")
+    public ResponseEntity<Map<String, Object>> cancelarReserva(@RequestBody Map<String, Object> req) {
+
+        String cod = String.valueOf(req.get("codReservaSucursal"));
+
+        if (cod == null || cod.isBlank() || "null".equalsIgnoreCase(cod)) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "status", "ERROR", "message", "codReservaSucursal es obligatorio.")
+            );
+        }
+
+        try {
+            Map<String, Object> rta = restaurante1Repository.cancelarReservaPorCodigoSucursal(cod);
+            return ResponseEntity.ok(rta);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(
+                    Map.of("success", false, "status", "ERROR", "message", "Error al cancelar: " + e.getMessage())
+            );
+        }
+    }
+
+
 
 
     /**

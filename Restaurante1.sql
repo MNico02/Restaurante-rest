@@ -1138,3 +1138,385 @@ IF XACT_STATE() <> 0 ROLLBACK;
 END CATCH
 END
 GO
+
+
+CREATE OR ALTER PROCEDURE dbo.cancelar_reserva_por_codigo_sucursal
+    @cod_reserva_sucursal NVARCHAR(80)
+    AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE
+@pos INT,
+        @cod_reserva_str NVARCHAR(60),
+        @nro_sucursal_str NVARCHAR(20),
+        @cod_reserva UNIQUEIDENTIFIER,
+        @nro_sucursal INT,
+        @nro_restaurante INT,
+        @fecha_reserva DATE,
+        @hora_reserva TIME(0),
+        @inicio_reserva DATETIME,
+        @min_tolerencia INT,
+        @ahora DATETIME = GETDATE(),
+        @minutos_antes INT,
+        @cancelada BIT;
+
+BEGIN TRY
+        /* 1) Validación formato: "codReserva-nroSucursal" */
+SET @pos = LEN(@cod_reserva_sucursal) - CHARINDEX('-', REVERSE(@cod_reserva_sucursal)) + 1;
+        IF (@pos <= 0)
+BEGIN
+            THROW 51000, 'Formato inválido. Se espera: codReserva-nroSucursal', 1;
+END
+
+        SET @cod_reserva_str = LEFT(@cod_reserva_sucursal, @pos - 1);
+        SET @nro_sucursal_str = SUBSTRING(@cod_reserva_sucursal, @pos + 1, 80);
+
+        /* 2) Parse GUID e INT */
+        SET @cod_reserva = TRY_CONVERT(UNIQUEIDENTIFIER, @cod_reserva_str);
+        SET @nro_sucursal = TRY_CONVERT(INT, @nro_sucursal_str);
+
+        IF (@cod_reserva IS NULL OR @nro_sucursal IS NULL)
+BEGIN
+            THROW 51000, 'No se pudo interpretar codReserva o nroSucursal desde codReservaSucursal.', 1;
+END
+
+        /* 3) Buscar reserva */
+SELECT
+    @nro_restaurante = rs.nro_restaurante,
+    @fecha_reserva   = rs.fecha_reserva,
+    @hora_reserva    = rs.hora_reserva,
+    @cancelada       = rs.cancelada
+FROM dbo.reservas_sucursales rs
+WHERE rs.cod_reserva = @cod_reserva
+  AND rs.nro_sucursal = @nro_sucursal;
+
+IF (@nro_restaurante IS NULL)
+BEGIN
+SELECT CAST(0 AS BIT) AS success,
+       'NOT_FOUND' AS status,
+       'Reserva no encontrada.' AS message;
+RETURN;
+END
+
+        /* 4) Idempotencia: si ya está cancelada */
+        IF (@cancelada = 1)
+BEGIN
+SELECT CAST(1 AS BIT) AS success,
+       'ALREADY_CANCELLED' AS status,
+       'La reserva ya estaba cancelada.' AS message;
+RETURN;
+END
+
+        /* 5) Obtener tolerancia mínima */
+SELECT @min_tolerencia = s.min_tolerencia_reserva
+FROM dbo.sucursales s
+WHERE s.nro_restaurante = @nro_restaurante
+  AND s.nro_sucursal = @nro_sucursal;
+
+IF (@min_tolerencia IS NULL)
+            SET @min_tolerencia = 0;
+
+        /* 6) Comparación: minutos antes del inicio de la reserva */
+        SET @inicio_reserva = DATEADD(SECOND, 0,
+                             DATEADD(DAY, DATEDIFF(DAY, 0, @fecha_reserva),
+                             CAST(@hora_reserva AS DATETIME)));
+
+        SET @minutos_antes = DATEDIFF(MINUTE, @ahora, @inicio_reserva);
+
+        IF (@minutos_antes < @min_tolerencia)
+BEGIN
+SELECT CAST(0 AS BIT) AS success,
+       'NOT_ALLOWED' AS status,
+       CONCAT('No se puede cancelar: tolerancia mínima ', @min_tolerencia,
+              ' min. Faltan ', @minutos_antes, ' min para la reserva.') AS message;
+RETURN;
+END
+
+        /* 7) Cancelar */
+BEGIN TRAN;
+
+UPDATE dbo.reservas_sucursales
+SET cancelada = 1,
+    fecha_cancelacion = CAST(@ahora AS DATE)
+WHERE cod_reserva = @cod_reserva
+  AND nro_sucursal = @nro_sucursal
+  AND cancelada = 0;
+
+COMMIT;
+
+SELECT CAST(1 AS BIT) AS success,
+       'CANCELLED' AS status,
+       'Cancelación exitosa.' AS message;
+
+END TRY
+BEGIN CATCH
+IF @@TRANCOUNT > 0 ROLLBACK;
+
+        DECLARE @msg NVARCHAR(4000) = ERROR_MESSAGE();
+SELECT CAST(0 AS BIT) AS success,
+       'ERROR' AS status,
+       @msg AS message;
+END CATCH
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.modificar_reserva_por_codigo_sucursal
+    @cod_reserva_sucursal NVARCHAR(80),
+
+    -- Nuevos datos
+    @fecha_reserva  DATE,
+    @hora_reserva   TIME(0),
+    @cod_zona       INT,
+    @cant_adultos   INT,
+    @cant_menores   INT
+    AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE
+@pos               INT,
+        @cod_reserva_str   NVARCHAR(60),
+        @nro_sucursal_str  NVARCHAR(20),
+        @cod_reserva       UNIQUEIDENTIFIER,
+        @nro_sucursal      INT,
+
+        -- datos de la reserva actual
+        @nro_restaurante   INT,
+        @fecha_actual      DATE,
+        @hora_actual       TIME(0),
+        @cancelada         BIT,
+
+        -- tolerancia
+        @min_tolerencia    INT,
+        @ahora             DATETIME = GETDATE(),
+        @inicio_reserva    DATETIME,
+        @minutos_antes     INT,
+
+        -- validaciones zona/turno/cupo
+        @cant_personas     INT,
+        @capacidad_total   INT,
+        @permite_menores   BIT,
+        @zona_habilitada   BIT,
+        @ocupados          INT;
+
+BEGIN TRY
+        ------------------------------------------------------------
+        -- 1) Validación formato "GUID-nroSucursal"
+        ------------------------------------------------------------
+SET @pos = LEN(@cod_reserva_sucursal) - CHARINDEX('-', REVERSE(@cod_reserva_sucursal)) + 1;
+        IF (@pos <= 0)
+BEGIN
+SELECT CAST(0 AS BIT) AS success, 'BAD_FORMAT' AS status,
+       'Formato inválido. Se espera: codReserva-nroSucursal' AS message;
+RETURN;
+END
+
+        SET @cod_reserva_str  = LEFT(@cod_reserva_sucursal, @pos - 1);
+        SET @nro_sucursal_str = SUBSTRING(@cod_reserva_sucursal, @pos + 1, 80);
+
+        SET @cod_reserva  = TRY_CONVERT(UNIQUEIDENTIFIER, @cod_reserva_str);
+        SET @nro_sucursal = TRY_CONVERT(INT, @nro_sucursal_str);
+
+        IF (@cod_reserva IS NULL OR @nro_sucursal IS NULL)
+BEGIN
+SELECT CAST(0 AS BIT) AS success, 'BAD_FORMAT' AS status,
+       'No se pudo interpretar codReserva o nroSucursal desde codReservaSucursal.' AS message;
+RETURN;
+END
+
+        ------------------------------------------------------------
+        -- 2) Buscar reserva actual
+        ------------------------------------------------------------
+SELECT
+    @nro_restaurante = rs.nro_restaurante,
+    @fecha_actual    = rs.fecha_reserva,
+    @hora_actual     = rs.hora_reserva,
+    @cancelada       = rs.cancelada
+FROM dbo.reservas_sucursales rs
+WHERE rs.cod_reserva = @cod_reserva
+  AND rs.nro_sucursal = @nro_sucursal;
+
+IF (@nro_restaurante IS NULL)
+BEGIN
+SELECT CAST(0 AS BIT) AS success, 'NOT_FOUND' AS status,
+       'Reserva no encontrada.' AS message;
+RETURN;
+END
+
+        IF (@cancelada = 1)
+BEGIN
+SELECT CAST(0 AS BIT) AS success, 'ALREADY_CANCELLED' AS status,
+       'No se puede modificar: la reserva está cancelada.' AS message;
+RETURN;
+END
+
+        ------------------------------------------------------------
+        -- 3) Validaciones básicas de entrada
+        ------------------------------------------------------------
+        SET @cant_personas = ISNULL(@cant_adultos,0) + ISNULL(@cant_menores,0);
+
+        IF @cant_personas <= 0
+BEGIN
+SELECT CAST(0 AS BIT) AS success, 'INVALID' AS status,
+       'La cantidad de personas debe ser mayor a 0.' AS message;
+RETURN;
+END
+
+        IF @fecha_reserva IS NULL OR @hora_reserva IS NULL
+BEGIN
+SELECT CAST(0 AS BIT) AS success, 'INVALID' AS status,
+       'Debe informar fecha_reserva y hora_reserva.' AS message;
+RETURN;
+END
+
+        ------------------------------------------------------------
+        -- 4) Validar tolerancia mínima (como cancelar)
+        --    Se calcula contra la FECHA/HORA ACTUAL de la reserva
+        ------------------------------------------------------------
+SELECT @min_tolerencia = s.min_tolerencia_reserva
+FROM dbo.sucursales s
+WHERE s.nro_restaurante = @nro_restaurante
+  AND s.nro_sucursal    = @nro_sucursal;
+
+IF (@min_tolerencia IS NULL) SET @min_tolerencia = 0;
+
+        SET @inicio_reserva =
+            DATEADD(SECOND, 0,
+              DATEADD(DAY, DATEDIFF(DAY, 0, @fecha_actual),
+              CAST(@hora_actual AS DATETIME)));
+
+        SET @minutos_antes = DATEDIFF(MINUTE, @ahora, @inicio_reserva);
+
+        IF (@minutos_antes < @min_tolerencia)
+BEGIN
+SELECT CAST(0 AS BIT) AS success, 'NOT_ALLOWED' AS status,
+       CONCAT('No se puede modificar: tolerancia mínima ', @min_tolerencia,
+              ' min. Faltan ', @minutos_antes, ' min para la reserva.') AS message;
+RETURN;
+END
+
+        ------------------------------------------------------------
+        -- 5) Validar zona existe/habilitada + capacidad + menores
+        ------------------------------------------------------------
+SELECT
+    @capacidad_total = zs.cant_comensales,
+    @permite_menores = zs.permite_menores,
+    @zona_habilitada = zs.habilitada
+FROM dbo.zonas_sucursales zs
+WHERE zs.nro_restaurante = @nro_restaurante
+  AND zs.nro_sucursal    = @nro_sucursal
+  AND zs.cod_zona        = @cod_zona;
+
+IF @capacidad_total IS NULL OR @zona_habilitada <> 1
+BEGIN
+SELECT CAST(0 AS BIT) AS success, 'INVALID_ZONE' AS status,
+       'La zona no existe o no está habilitada para la sucursal.' AS message;
+RETURN;
+END
+
+        IF @cant_menores > 0 AND @permite_menores <> 1
+BEGIN
+SELECT CAST(0 AS BIT) AS success, 'NO_MINORS' AS status,
+       'La zona no permite menores.' AS message;
+RETURN;
+END
+
+        ------------------------------------------------------------
+        -- 6) Validar turno existe/habilitado y asociado a la zona
+        ------------------------------------------------------------
+        IF NOT EXISTS (
+            SELECT 1
+            FROM dbo.turnos_sucursales t
+            WHERE t.nro_restaurante = @nro_restaurante
+              AND t.nro_sucursal    = @nro_sucursal
+              AND t.hora_reserva    = @hora_reserva
+              AND t.habilitado      = 1
+        )
+BEGIN
+SELECT CAST(0 AS BIT) AS success, 'INVALID_TURNO' AS status,
+       'El turno no existe o no está habilitado para la sucursal.' AS message;
+RETURN;
+END
+
+        IF NOT EXISTS (
+            SELECT 1
+            FROM dbo.zonas_turnos_sucursales zts
+            WHERE zts.nro_restaurante = @nro_restaurante
+              AND zts.nro_sucursal    = @nro_sucursal
+              AND zts.cod_zona        = @cod_zona
+              AND zts.hora_reserva    = @hora_reserva
+        )
+BEGIN
+SELECT CAST(0 AS BIT) AS success, 'INVALID_ZONE_TURNO' AS status,
+       'La zona no está habilitada para ese turno.' AS message;
+RETURN;
+END
+
+        ------------------------------------------------------------
+        -- 7) Validar disponibilidad REAL (concurrencia controlada)
+        --    Excluye ESTA reserva del conteo
+        ------------------------------------------------------------
+BEGIN TRAN;
+
+SELECT
+    @ocupados = SUM(ISNULL(r.cant_adultos,0) + ISNULL(r.cant_menores,0))
+FROM dbo.reservas_sucursales r WITH (UPDLOCK, HOLDLOCK)
+WHERE r.nro_restaurante = @nro_restaurante
+  AND r.nro_sucursal    = @nro_sucursal
+  AND r.cod_zona        = @cod_zona
+  AND r.fecha_reserva   = @fecha_reserva
+  AND r.hora_reserva    = @hora_reserva
+  AND ISNULL(r.cancelada,0) = 0
+  AND r.cod_reserva <> @cod_reserva;
+
+SET @ocupados = ISNULL(@ocupados, 0);
+
+        IF (@capacidad_total - @ocupados) < @cant_personas
+BEGIN
+ROLLBACK;
+SELECT CAST(0 AS BIT) AS success, 'NO_CAPACITY' AS status,
+       'No hay cupo disponible para ese turno y zona.' AS message;
+RETURN;
+END
+
+        ------------------------------------------------------------
+        -- 8) Actualizar reserva
+        ------------------------------------------------------------
+UPDATE dbo.reservas_sucursales
+SET
+    fecha_reserva = @fecha_reserva,
+    hora_reserva  = @hora_reserva,
+    cod_zona      = @cod_zona,
+    cant_adultos  = @cant_adultos,
+    cant_menores  = @cant_menores
+WHERE cod_reserva = @cod_reserva
+  AND nro_sucursal = @nro_sucursal
+  AND ISNULL(cancelada,0) = 0;
+
+IF (@@ROWCOUNT = 0)
+BEGIN
+ROLLBACK;
+SELECT CAST(0 AS BIT) AS success, 'NOT_UPDATED' AS status,
+       'No se pudo modificar la reserva (puede estar cancelada o no existir).' AS message;
+RETURN;
+END
+
+COMMIT;
+
+SELECT CAST(1 AS BIT) AS success, 'UPDATED' AS status,
+       'Reserva modificada correctamente.' AS message;
+
+END TRY
+BEGIN CATCH
+IF @@TRANCOUNT > 0 ROLLBACK;
+
+        DECLARE @msg NVARCHAR(4000) = ERROR_MESSAGE();
+
+SELECT CAST(0 AS BIT) AS success, 'ERROR' AS status,
+       @msg AS message;
+END CATCH
+END;
+GO
