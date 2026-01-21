@@ -31,7 +31,8 @@ public class Restaurante1Repository {
                 .addValue("hora_reserva", java.sql.Time.valueOf(data.getHoraReserva()), Types.TIME)
                 .addValue("cod_zona", data.getCodZona(), Types.INTEGER)
                 .addValue("cant_adultos", data.getCantAdultos(), Types.INTEGER)
-                .addValue("cant_menores", data.getCantMenores(), Types.INTEGER);
+                .addValue("cant_menores", data.getCantMenores(), Types.INTEGER)
+                .addValue("costo_reserva",data.getCostoReserva(), Types.DECIMAL);
 
         try {
             Map<String, Object> out =
