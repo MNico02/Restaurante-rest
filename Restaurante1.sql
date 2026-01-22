@@ -908,7 +908,7 @@ go
 
 
 go
-	 CREATE OR ALTER PROCEDURE dbo.get_contenidos
+	 	 CREATE OR ALTER PROCEDURE dbo.get_contenidos
     @nro_restaurante INT
     AS
 BEGIN
@@ -932,10 +932,6 @@ WHERE c.nro_restaurante = @nro_restaurante
   AND c.publicado = 0;
 
 -- 2) Marcar como publicados
-UPDATE dbo.contenidos
-SET publicado = 1
-WHERE nro_restaurante = @nro_restaurante
-  AND publicado = 0;
 
 COMMIT;
 END TRY
@@ -946,13 +942,82 @@ IF XACT_STATE() <> 0
         THROW;
 END CATCH
 END;
-GO
 
 --para el procesamiento batch
 select * from dbo.contenidos
 update dbo.contenidos
 set publicado=0
 
+CREATE OR ALTER PROCEDURE dbo.upd_publicar_contenidos_lote
+    @nro_restaurante INT,
+    @costo_click     DECIMAL(12,2),
+    @nro_contenidos  NVARCHAR(MAX)  -- Lista de IDs separados por coma: '1,2,3,4'
+    AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+BEGIN TRY
+BEGIN TRAN;
+
+        ------------------------------------------------------------
+        -- 1) Crear tabla temporal con los IDs
+        ------------------------------------------------------------
+CREATE TABLE #contenidos_a_publicar (nro_contenido INT);
+
+INSERT INTO #contenidos_a_publicar (nro_contenido)
+SELECT CAST(value AS INT)
+FROM STRING_SPLIT(@nro_contenidos, ',');
+
+DECLARE @total_solicitado INT = (SELECT COUNT(*) FROM #contenidos_a_publicar);
+
+        ------------------------------------------------------------
+        -- 2) Actualizar todos los contenidos del lote
+        ------------------------------------------------------------
+UPDATE c
+SET
+    c.costo_click = @costo_click,
+    c.publicado = 1
+    FROM dbo.contenidos c
+        INNER JOIN #contenidos_a_publicar tmp
+ON c.nro_contenido = tmp.nro_contenido
+WHERE c.nro_restaurante = @nro_restaurante
+  AND c.publicado = 0;
+
+DECLARE @registros_actualizados INT = @@ROWCOUNT;
+
+        ------------------------------------------------------------
+        -- 3) Retornar mensaje de resultado
+        ------------------------------------------------------------
+SELECT
+    resultado = CASE
+                    WHEN @registros_actualizados = @total_solicitado
+                        THEN 'Éxito: Se publicaron ' + CAST(@registros_actualizados AS VARCHAR) + ' contenidos correctamente.'
+                    WHEN @registros_actualizados > 0
+                        THEN 'Parcial: Se publicaron ' + CAST(@registros_actualizados AS VARCHAR) + ' de ' + CAST(@total_solicitado AS VARCHAR) + ' contenidos (algunos ya estaban publicados).'
+                    ELSE 'Advertencia: No se publicó ningún contenido (ya estaban publicados o no existen).'
+        END,
+    registros_actualizados = @registros_actualizados,
+    registros_solicitados = @total_solicitado,
+    costo_aplicado = @costo_click;
+
+DROP TABLE #contenidos_a_publicar;
+
+COMMIT;
+END TRY
+BEGIN CATCH
+IF XACT_STATE() <> 0
+            ROLLBACK;
+
+        -- Retornar mensaje de error
+SELECT
+    resultado = 'Error: ' + ERROR_MESSAGE(),
+    registros_actualizados = 0,
+    registros_solicitados = 0,
+    costo_aplicado = NULL;
+END CATCH
+END;
+GO
 
 
 

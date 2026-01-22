@@ -4,6 +4,7 @@ import ar.edu.ubp.das.restaurante1.repositories.Restaurante1Repository;
 import ar.edu.ubp.das.restaurante1.service.ReservaService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.relational.core.sql.Not;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -90,8 +91,6 @@ public class Restaurante1Resource {
     }
 
 
-
-
     /**
      * le da a ristorino toda la info del restaurante
      * @param id
@@ -125,6 +124,22 @@ public class Restaurante1Resource {
     public ResponseEntity<List<ContenidoBean>> getPromociones(@RequestParam("id") int id) throws JsonProcessingException {
         List<ContenidoBean> promociones = restaurante1Repository.getContenidos(id);
         return ResponseEntity.ok(promociones);
+    }
+    @PostMapping("/notificarRestaurante")
+    public ResponseEntity<UpdPublicarContenidosRespBean> notificarRestaurante(@RequestBody NotiRestReqBean req) {
+        UpdPublicarContenidosRespBean resp =
+                restaurante1Repository.notificarContenidos(req);
+
+        if (resp == null) {
+
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .build();
+        }
+        System.out.println("SP upd_publicar_contenidos_lote -> resultado: "+resp.getResultado()+
+                ", actualizados: "+resp.getRegistrosActualizados()+"/"+resp.getRegistrosSolicitados());
+        return ResponseEntity.ok(resp);
+
     }
 
 

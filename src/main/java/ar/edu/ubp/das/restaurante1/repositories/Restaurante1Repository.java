@@ -189,7 +189,7 @@ public class Restaurante1Repository {
                 c.setNroContenido(getInt(row.get("nro_contenido")));
                 c.setContenidoAPublicar(getStr(row.get("contenido_a_publicar")));
                 c.setImagenAPublicar(getStr(row.get("imagen_a_publicar")));
-                c.setPublicado(true); // ya fueron publicados por el SP
+                c.setPublicado(false); // ya fueron publicados por el SP
                 c.setCostoClick(getBigDec(row.get("costo_click")));
                 contenidos.add(c);
             }
@@ -198,6 +198,24 @@ public class Restaurante1Repository {
         return contenidos;
     }
 
+    public UpdPublicarContenidosRespBean notificarContenidos(NotiRestReqBean req){
+        SqlParameterSource params = new MapSqlParameterSource()
+                .addValue("nro_restaurante", req.getNroRestaurante(), Types.INTEGER)
+                .addValue("costo_click",req.getCostoAplicado(),Types.DECIMAL)
+                .addValue("nro_contenidos",req.getNroContenidos(),Types.VARCHAR);
+
+        List<UpdPublicarContenidosRespBean> result =
+                jdbcCallFactory.executeQuery(
+                        "upd_publicar_contenidos_lote",
+                        "dbo",
+                        params,
+                        "resultado",   // nombre del ResultSet
+                        UpdPublicarContenidosRespBean.class
+                );
+
+        return result.isEmpty() ? null : result.get(0);
+
+    }
 
 
     public RestauranteBean getInfoRestaurante(int nroRestaurante) throws JsonProcessingException {
