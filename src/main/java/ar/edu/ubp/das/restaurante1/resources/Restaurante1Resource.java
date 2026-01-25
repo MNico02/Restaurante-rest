@@ -46,6 +46,7 @@ public class Restaurante1Resource {
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(resp);
     }
+
     @PostMapping("/modificarReserva")
     public ResponseEntity<ResponseBean> modificarReserva(@RequestBody ModificarReservaReqBean req) {
 
@@ -109,10 +110,12 @@ public class Restaurante1Resource {
      */
     @PostMapping("/registrarClicks")
     public ResponseEntity<Map<String, Object>> insertarCicks(@RequestBody List<SoliClickBean> clicks) {
+        for (SoliClickBean click : clicks) {
+            System.out.println(click.getNroClick()+" "+click.getCodContenidoRestaurante()+" "+click.getCostoClick());
+        }
         try {
-            for (SoliClickBean c : clicks) {
-                restaurante1Repository.insClick(c);
-            }
+        String resultado =    restaurante1Repository.insClickLote(clicks);
+            System.out.println(resultado);
             return ResponseEntity.ok(Map.of("success", true, "message", "Click registrado correctamente"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

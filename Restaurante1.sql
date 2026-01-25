@@ -790,72 +790,160 @@ GO
 
 
 
-        CREATE OR ALTER PROCEDURE dbo.sp_clicks_contenidos_insertar
-    @nro_restaurante      INT,
-    @nro_contenido        INT,
-    @correo_cliente       NVARCHAR(160) = NULL,   -- nuevo parámetro
-    @fecha_hora_registro  DATETIME2     = NULL    -- opcional; default = ahora
+CREATE OR ALTER PROCEDURE dbo.sp_clicks_contenidos_insertar_lote
+    @clicks_json NVARCHAR(MAX)
     AS
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    DECLARE @ahora DATETIME2 = ISNULL(@fecha_hora_registro, SYSUTCDATETIME());
-    DECLARE @costo DECIMAL(12,2);
-    DECLARE @nro_click INT;
-    DECLARE @nro_cliente_resuelto INT = NULL;
+    DECLARE @ahora DATETIME2 = SYSUTCDATETIME();
+    DECLARE @error_message NVARCHAR(4000);
 
-    -- 0) Resolver nro_cliente a partir del correo (si viene)
-    IF @correo_cliente IS NOT NULL
-BEGIN
-SELECT @nro_cliente_resuelto = c.nro_cliente
-FROM dbo.clientes c
-WHERE c.correo = @correo_cliente;
--- si no existe, queda NULL (correcto)
-END
+CREATE TABLE #ClicksTemp (
+                             id_temp INT IDENTITY(1,1),  -- ID temporal para ordenar
+                             nro_restaurante INT,
+                             nro_contenido INT,
+                             correo_cliente NVARCHAR(160),
+                             fecha_hora_registro DATETIME2,
+                             nro_cliente INT NULL,
+                             costo_click DECIMAL(12,2) NULL,
+                             nro_click INT NULL
+);
 
-    -- Aislar para evitar nro_click duplicados en concurrencia
+-- 1) Parsear JSON
+INSERT INTO #ClicksTemp (nro_restaurante, nro_contenido, correo_cliente, fecha_hora_registro)
+SELECT
+    nro_restaurante,
+    nro_contenido,
+    correo_cliente,
+    ISNULL(CAST(fecha_hora_registro AS DATETIME2), @ahora)
+FROM OPENJSON(@clicks_json)
+    WITH (
+    nro_restaurante INT '$.nro_restaurante',
+    nro_contenido INT '$.nro_contenido',
+    correo_cliente NVARCHAR(160) '$.correo_cliente',
+    fecha_hora_registro NVARCHAR(50) '$.fecha_hora_registro'
+    );
+
+-- 2) Resolver clientes
+UPDATE t
+SET t.nro_cliente = c.nro_cliente
+    FROM #ClicksTemp t
+    INNER JOIN dbo.clientes c ON c.correo = t.correo_cliente
+WHERE t.correo_cliente IS NOT NULL;
+
 SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 BEGIN TRAN;
 
-        -- 1) Obtener costo desde contenidos (y validar existencia)
-SELECT @costo = c.costo_click
-FROM dbo.contenidos AS c WITH (UPDLOCK, HOLDLOCK)
-WHERE c.nro_restaurante = @nro_restaurante
-  AND c.nro_contenido   = @nro_contenido;
+BEGIN TRY
+        -- 3) Obtener costos
+UPDATE t
+SET t.costo_click = c.costo_click
+    FROM #ClicksTemp t
+        INNER JOIN dbo.contenidos c WITH (UPDLOCK, HOLDLOCK)
+ON c.nro_restaurante = t.nro_restaurante
+    AND c.nro_contenido = t.nro_contenido;
 
-IF @costo IS NULL
+-- Validar contenidos
+IF EXISTS (SELECT 1 FROM #ClicksTemp WHERE costo_click IS NULL)
 BEGIN
-ROLLBACK;
-THROW 50010, 'No existe contenido para ese restaurante/contenido o costo_click NULL.', 1;
+            DECLARE @rest INT, @cont INT;
+            DECLARE @msg_temp NVARCHAR(MAX) = '';
+
+            DECLARE contenidos_faltantes CURSOR FOR
+SELECT DISTINCT nro_restaurante, nro_contenido
+FROM #ClicksTemp
+WHERE costo_click IS NULL;
+
+OPEN contenidos_faltantes;
+FETCH NEXT FROM contenidos_faltantes INTO @rest, @cont;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+                SET @msg_temp = @msg_temp + 'Rest:' + CAST(@rest AS VARCHAR) +
+                                ' Cont:' + CAST(@cont AS VARCHAR) + '; ';
+FETCH NEXT FROM contenidos_faltantes INTO @rest, @cont;
 END
 
-        -- 2) Calcular siguiente nro_click incremental por (restaurante, contenido)
-SELECT @nro_click = ISNULL(MAX(cc.nro_click), 0) + 1
-FROM dbo.clicks_contenidos AS cc WITH (UPDLOCK, HOLDLOCK)
-WHERE cc.nro_restaurante = @nro_restaurante
-  AND cc.nro_contenido   = @nro_contenido;
+CLOSE contenidos_faltantes;
+DEALLOCATE contenidos_faltantes;
 
--- 3) Insertar el click
+            SET @error_message = 'Contenidos no encontrados: ' + @msg_temp;
+
+ROLLBACK;
+DROP TABLE IF EXISTS #ClicksTemp;
+RAISERROR(@error_message, 16, 1);
+            RETURN;
+END
+
+        -- 4) Calcular nro_click CORREGIDO
+        DECLARE @nro_rest INT, @nro_cont INT, @max_click INT;
+
+        DECLARE click_cursor CURSOR LOCAL FAST_FORWARD FOR
+SELECT DISTINCT nro_restaurante, nro_contenido
+FROM #ClicksTemp
+ORDER BY nro_restaurante, nro_contenido;
+
+OPEN click_cursor;
+FETCH NEXT FROM click_cursor INTO @nro_rest, @nro_cont;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+            -- Obtener el máximo actual de la tabla principal
+SELECT @max_click = ISNULL(MAX(nro_click), 0)
+FROM dbo.clicks_contenidos WITH (UPDLOCK, HOLDLOCK)
+WHERE nro_restaurante = @nro_rest
+  AND nro_contenido = @nro_cont;
+
+-- CORRECCIÓN: Asignar números secuenciales usando ROW_NUMBER
+-- ordenados por id_temp para mantener el orden de inserción
+UPDATE t
+SET t.nro_click = @max_click + rn
+    FROM #ClicksTemp t
+            INNER JOIN (
+                SELECT
+                    id_temp,
+                    ROW_NUMBER() OVER (ORDER BY id_temp) as rn
+                FROM #ClicksTemp
+                WHERE nro_restaurante = @nro_rest
+                  AND nro_contenido = @nro_cont
+            ) AS numbered ON t.id_temp = numbered.id_temp;
+
+FETCH NEXT FROM click_cursor INTO @nro_rest, @nro_cont;
+END
+
+CLOSE click_cursor;
+DEALLOCATE click_cursor;
+
+        -- 5) Insertar
 INSERT INTO dbo.clicks_contenidos
 (nro_restaurante, nro_contenido, nro_click, fecha_hora_registro, nro_cliente, costo_click)
-VALUES
-    (@nro_restaurante, @nro_contenido, @nro_click, @ahora, @nro_cliente_resuelto, @costo);
+SELECT
+    nro_restaurante, nro_contenido, nro_click,
+    fecha_hora_registro, nro_cliente, costo_click
+FROM #ClicksTemp
+ORDER BY id_temp;  -- Mantener orden de inserción
 
 COMMIT;
 
--- 4) Devolver el registro insertado
+-- 6) Retornar resultados
 SELECT
-    @nro_restaurante        AS nro_restaurante,
-    @nro_contenido          AS nro_contenido,
-    @nro_click              AS nro_click,
-    @ahora                  AS fecha_hora_registro,
-    @nro_cliente_resuelto   AS nro_cliente,
-    @correo_cliente         AS correo_cliente,
-    @costo                  AS costo_click;
+    nro_restaurante, nro_contenido, nro_click,
+    fecha_hora_registro, nro_cliente, correo_cliente, costo_click
+FROM #ClicksTemp
+ORDER BY id_temp;
+
+END TRY
+BEGIN CATCH
+IF @@TRANCOUNT > 0 ROLLBACK;
+DROP TABLE IF EXISTS #ClicksTemp;
+THROW;
+END CATCH
+
+DROP TABLE IF EXISTS #ClicksTemp;
 END;
 GO
-
 
 
 /* ============================================

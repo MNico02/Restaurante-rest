@@ -3,6 +3,8 @@ import ar.edu.ubp.das.restaurante1.beans.*;
 import ar.edu.ubp.das.restaurante1.components.SimpleJdbcCallFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
@@ -99,6 +101,7 @@ public class Restaurante1Repository {
         }
         return null; // o lanzar excepción si preferís
     }
+
     public List<HorarioBean> getHorarios(SoliHorarioBean data) {
         SqlParameterSource params = new MapSqlParameterSource()
                 .addValue("nro_restaurante", 1, Types.INTEGER)
@@ -109,6 +112,7 @@ public class Restaurante1Repository {
                 .addValue("menores",data.isMenores(), Types.BIT);
         return jdbcCallFactory.executeQuery("get_horarios_disponibles", "dbo", params, "", HorarioBean.class);
     }
+
     public Map<String, Object> cancelarReservaPorCodigoSucursal(String codReservaSucursal) {
 
         MapSqlParameterSource params = new MapSqlParameterSource()
@@ -125,26 +129,60 @@ public class Restaurante1Repository {
                 ? Map.of("success", false, "status", "ERROR", "message", "SP no devolvió resultado.")
                 : rs.get(0);
     }
-    public String insClick(SoliClickBean data) {
 
-        ContenidoKey key = parseCodContenidoRestauranteSplit(data.getCodContenidoRestaurante());
-        Integer nroContenido   = key.nroContenido();
-        Integer nroRestaurante = key.nroRestaurante();
+    public String insClickLote(List<SoliClickBean> clicks) {
 
-
-        // 4) Parámetros con tipos correctos
-        SqlParameterSource params = new MapSqlParameterSource()
-                .addValue("nro_restaurante",    nroRestaurante, Types.INTEGER)
-                .addValue("nro_contenido",      nroContenido,   Types.INTEGER)
-                .addValue("correo_cliente",        data.getCorreo_cliente(),     Types.VARCHAR)
-                .addValue("fecha_hora_registro",null,        Types.TIMESTAMP);
+        if (clicks == null || clicks.isEmpty()) {
+            return "No hay clicks para registrar.";
+        }
 
         try {
-            jdbcCallFactory.execute("sp_clicks_contenidos_insertar", "dbo", params);
-            return "Click registrado correctamente.";
-        } catch (Exception e) {
+            ObjectMapper mapper = new ObjectMapper();
+            ArrayNode clicksArray = mapper.createArrayNode();
 
-            return "Error al registrar click: " + e.getMessage();
+            System.out.println("=== PROCESANDO CLICKS ===");
+            for (SoliClickBean data : clicks) {
+                ContenidoKey key = parseCodContenidoRestauranteSplit(data.getCodContenidoRestaurante());
+
+                System.out.println(String.format(
+                        "Click: Rest=%d, Cont=%d, Correo=%s",
+                        key.nroRestaurante(),
+                        key.nroContenido(),
+                        data.getCorreo_cliente()
+                ));
+
+                ObjectNode clickNode = mapper.createObjectNode();
+                clickNode.put("nro_restaurante", key.nroRestaurante());
+                clickNode.put("nro_contenido", key.nroContenido());
+
+                // Manejo correcto de null
+                if (data.getCorreo_cliente() != null && !data.getCorreo_cliente().trim().isEmpty()) {
+                    clickNode.put("correo_cliente", data.getCorreo_cliente());
+                } else {
+                    clickNode.putNull("correo_cliente");
+                }
+
+                clickNode.putNull("fecha_hora_registro");
+
+                clicksArray.add(clickNode);
+            }
+
+            String json = mapper.writeValueAsString(clicksArray);
+
+            System.out.println("=== JSON GENERADO ===");
+            System.out.println(json);
+
+            SqlParameterSource params = new MapSqlParameterSource()
+                    .addValue("clicks_json", json, Types.NVARCHAR);
+
+            jdbcCallFactory.execute("sp_clicks_contenidos_insertar_lote", "dbo", params);
+
+            return "Se registraron " + clicks.size() + " clicks correctamente.";
+
+        } catch (Exception e) {
+            System.err.println("ERROR COMPLETO: " + e.getMessage());
+            e.printStackTrace();
+            return "Error al registrar clicks: " + e.getMessage();
         }
     }
 
@@ -155,14 +193,12 @@ public class Restaurante1Repository {
         if (parts.length != 2) {
             throw new IllegalArgumentException("Formato inválido: esperado 'contenido-restaurante'. Recibido: " + code);
         }
-        int nroContenido   = Integer.parseInt(parts[0].trim());
-        int nroRestaurante = Integer.parseInt(parts[1].trim());
+        int nroContenido   = Integer.parseInt(parts[1].trim());
+        int nroRestaurante = Integer.parseInt(parts[0].trim());
         return new ContenidoKey(nroContenido, nroRestaurante);
     }
 
     public record ContenidoKey(int nroContenido, int nroRestaurante) {}
-
-
 
     public List<ContenidoBean> getContenidos(int nroRestaurante) {
 
