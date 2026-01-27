@@ -9,4 +9,5 @@ public class NotiRestReqBean {
     int nroRestaurante;
     BigDecimal costoAplicado;
     String nroContenidos;
+
 }

@@ -237,8 +237,8 @@ public class Restaurante1Repository {
     public UpdPublicarContenidosRespBean notificarContenidos(NotiRestReqBean req){
         SqlParameterSource params = new MapSqlParameterSource()
                 .addValue("nro_restaurante", req.getNroRestaurante(), Types.INTEGER)
-                .addValue("costo_click",req.getCostoAplicado(),Types.DECIMAL)
-                .addValue("nro_contenidos",req.getNroContenidos(),Types.VARCHAR);
+                .addValue("costo_click", req.getCostoAplicado(), Types.DECIMAL)
+                .addValue("nro_contenidos", req.getNroContenidos(), Types.VARCHAR);
 
         List<UpdPublicarContenidosRespBean> result =
                 jdbcCallFactory.executeQuery(

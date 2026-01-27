@@ -10,4 +10,5 @@ public class UpdPublicarContenidosRespBean {
     private Integer registrosActualizados;
     private Integer registrosSolicitados;
     private BigDecimal costoAplicado;
+
 }

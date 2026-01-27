@@ -4,12 +4,11 @@ import ar.edu.ubp.das.restaurante1.repositories.Restaurante1Repository;
 import ar.edu.ubp.das.restaurante1.service.ReservaService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.relational.core.sql.Not;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -50,10 +49,10 @@ public class Restaurante1Resource {
     @PostMapping("/modificarReserva")
     public ResponseEntity<ResponseBean> modificarReserva(@RequestBody ModificarReservaReqBean req) {
 
-       ResponseBean resp = restaurante1Repository.modificarReserva(req);
+        ResponseBean resp = restaurante1Repository.modificarReserva(req);
 
 
-            return ResponseEntity.ok(resp);
+        return ResponseEntity.ok(resp);
 
     }
 
@@ -114,7 +113,7 @@ public class Restaurante1Resource {
             System.out.println(click.getNroClick()+" "+click.getCodContenidoRestaurante()+" "+click.getCostoClick());
         }
         try {
-        String resultado =    restaurante1Repository.insClickLote(clicks);
+            String resultado =    restaurante1Repository.insClickLote(clicks);
             System.out.println(resultado);
             return ResponseEntity.ok(Map.of("success", true, "message", "Click registrado correctamente"));
         } catch (Exception e) {

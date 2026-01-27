@@ -302,43 +302,12 @@ CREATE TABLE dbo.clicks_contenidos (
 );
 GO
 
-CREATE OR ALTER TRIGGER TR_zonas_sucursales_validar_capacidad
-ON dbo.zonas_sucursales
-AFTER INSERT, UPDATE
-                                  AS
-BEGIN
-    SET NOCOUNT ON;
+/*---------------------------------------------------------
 
-    IF EXISTS (
-        SELECT 1
-        FROM (
-            SELECT i.nro_restaurante, i.nro_sucursal
-            FROM inserted i
-            UNION
-            SELECT d.nro_restaurante, d.nro_sucursal
-            FROM deleted d
-        ) AS afectados
-        JOIN dbo.sucursales s
-          ON s.nro_restaurante = afectados.nro_restaurante
-         AND s.nro_sucursal    = afectados.nro_sucursal
-        CROSS APPLY (
-            SELECT SUM(zs.cant_comensales) AS suma_zonas
-            FROM dbo.zonas_sucursales zs
-            WHERE zs.nro_restaurante = afectados.nro_restaurante
-              AND zs.nro_sucursal    = afectados.nro_sucursal
-        ) x
-        WHERE x.suma_zonas > s.total_comensales
-    )
-BEGIN
-ROLLBACK;
-THROW 51001, 'La suma de cant_comensales supera el total_comensales definido en sucursales.', 1;
-END
-END;
-GO
----------------------------------------------------------
 
----         INSERTS
+						sección inserts
 
+-----------------------------------------------------------*/
 /* =======================
    Provincias y Localidades
    =======================*/
@@ -347,31 +316,30 @@ GO
 INSERT INTO dbo.provincias (cod_provincia, nom_provincia)
 VALUES (1,N'Córdoba'), (2,N'Santa Fe'), (3,N'Buenos Aires');
 
-INSERT INTO dbo.localidades (nro_localidad, nom_localidad, cod_provincia) VALUES
-                                                                              (1,N'Córdoba Capital', 1),
-                                                                              (2,N'Villa María', 1),
-                                                                              (3,N'Río Cuarto', 1);
+INSERT INTO dbo.localidades (nro_localidad, nom_localidad, cod_provincia)
+VALUES
+    (1,N'Córdoba Capital', 1),
+    (2,N'Villa María', 1),
+    (3,N'Río Cuarto', 1),
+    (4,N'Santa Fe Capital', 2),
+    (5,N'Rosario', 2),
+    (6,N'La Plata', 3),
+    (7,N'Mar del Plata', 3);
 
-INSERT INTO dbo.localidades (nro_localidad,nom_localidad, cod_provincia)
-VALUES (4,N'Santa Fe Capital', 2),
-       (5,N'Rosario', 2);
-
-
-INSERT INTO dbo.localidades (nro_localidad,nom_localidad, cod_provincia)
-VALUES (6,N'La Plata', 3),
-       (7,N'Mar del Plata', 3);
 
 /* =======================
    Categorías de precios
    =======================*/
-INSERT INTO dbo.categorias_precios (nro_categoria, nom_categoria) VALUES
-                                                                      (1, N'Baja'), (2, N'Media'), (3, N'Alta');
+INSERT INTO dbo.categorias_precios (nro_categoria, nom_categoria)
+VALUES
+    (1, N'Baja'), (2, N'Media'), (3, N'Alta');
 
 /* =======================
    Zonas disponibles
    =======================*/
-INSERT INTO dbo.zonas (cod_zona, nom_zona) VALUES
-                                               (1, N'Saln'), (2, N'Terraza'), (3, N'Patio');
+INSERT INTO dbo.zonas (cod_zona, nom_zona)
+VALUES
+    (1, N'Salón'), (2, N'Terraza'), (3, N'Patio');
 
 /* =======================
    Tipos de comidas
@@ -382,30 +350,32 @@ INSERT INTO dbo.tipos_comidas (nro_tipo_comida, nom_tipo_comida) VALUES
 /* =======================
    Especialidades alimentarias
    =======================*/
-INSERT INTO dbo.especialidades_alimentarias (nro_restriccion, nom_restriccion) VALUES
-                                                                                   (1, N'Vegetariano'), (2, N'Celíaco');
+INSERT INTO dbo.especialidades_alimentarias (nro_restriccion, nom_restriccion)
+VALUES
+    (1, N'Vegetariano'), (2, N'Celíaco');
 
 /* =======================
    Estilos
    =======================*/
-INSERT INTO dbo.estilos (nro_estilo, nom_estilo) VALUES
-                                                     (1, N'Casual'), (2, N'Familiar');
+INSERT INTO dbo.estilos (nro_estilo, nom_estilo)
+VALUES
+    (1, N'Casual'), (2, N'Familiar');
 
 
 /* =======================
    Restaurante principal
    =======================*/
 INSERT INTO dbo.restaurantes (nro_restaurante, razon_social, cuit) VALUES
-    (1, N'El millonario', N'30-91245678-9');
+    (1, N'La Bella Pizza', N'30-91245678-9');
 
 /* =======================
-   Sucursales (4 en total)
+   Sucursales
    =======================*/
 INSERT INTO dbo.sucursales
 (nro_restaurante, nro_sucursal, nom_sucursal, calle, nro_calle, barrio, nro_localidad, cod_postal, telefonos,
  total_comensales, min_tolerencia_reserva, nro_categoria)
 VALUES
-    (1, 1,N'Casa Central El millonario',  N'Av. Siempreviva', 742, N'Centro',   1, N'5000', N'351-5551001', 60, 15, 2),
+    (1, 1,N'Casa Central El millonario',  N'Av. Siempreviva', 742, N'Alta Córdoba',   1, N'5000', N'351-5551001', 60, 15, 2),
     (1, 2,N'Sucursal norte El millonario',    N'25 de Mayo',    742,  N'General Paz',    2, N'5000', N'351-5551002', 80, 10, 3)
 
 
@@ -440,28 +410,6 @@ VALUES
 (1,2,'22:00:00','23:59:00',1);
 
 
-
-
-select * from turnos_sucursales
-
-
-/* Todas las sucursales sirven Italiana tradicional */
-    INSERT INTO dbo.tipos_comidas_sucursales (nro_restaurante, nro_sucursal, nro_tipo_comida, habilitado)
-VALUES (1,1,1,1),(1,2,1,1);
-
-/* Todas las sucursales con estilos Casual y Familiar */
-INSERT INTO dbo.estilos_sucursales (nro_restaurante, nro_sucursal, nro_estilo, habilitado)
-VALUES
-    (1,1,1,1),(1,1,2,1),
-    (1,2,1,1),(1,2,2,1);
-
-/* Especialidades alimentarias (solo vegetariano y celíaco habilitados) */
-INSERT INTO dbo.especialidades_alimentarias_sucursales (nro_restaurante, nro_sucursal, nro_restriccion, habilitada)
-VALUES
-    (1,1,1,1),(1,1,2,1),
-    (1,2,1,1),(1,2,2,1);
-
-
 INSERT INTO dbo.zonas_turnos_sucursales
 (nro_restaurante, nro_sucursal, cod_zona, hora_reserva, permite_menores)
 VALUES
@@ -480,10 +428,81 @@ VALUES
 (1,2,2,'20:00:00',1),(1,2,2,'22:00:00',1);
 
 go
----------------------------------------------------------------
-----Procedimientos
+/* Todas las sucursales sirven Italiana tradicional */
+    INSERT INTO dbo.tipos_comidas_sucursales (nro_restaurante, nro_sucursal, nro_tipo_comida, habilitado)
+VALUES (1,1,1,1),(1,2,1,1);
+
+/* Todas las sucursales con estilos Casual y Familiar */
+INSERT INTO dbo.estilos_sucursales (nro_restaurante, nro_sucursal, nro_estilo, habilitado)
+VALUES
+    (1,1,1,1),(1,1,2,1),
+    (1,2,1,1),(1,2,2,1);
+
+/* Especialidades alimentarias (solo vegetariano y celíaco habilitados) */
+INSERT INTO dbo.especialidades_alimentarias_sucursales (nro_restaurante, nro_sucursal, nro_restriccion, habilitada)
+VALUES
+    (1,1,1,1),(1,1,2,1),
+    (1,2,1,1),(1,2,2,1);
 
 
+
+
+
+
+/* ============================================
+   CONTENIDOS PROMOCIONALES — RESTAURANTE 1
+   ============================================*/
+
+-- ===========================
+-- Sucursal 1 (Tradicional, Medio, Arg + Ita, Sin gluten)
+-- ===========================
+INSERT INTO dbo.contenidos
+(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
+    (1, 1,
+     N'Menú Tradicional "Abuela" (Sin gluten): empanadas de carne al horno con tapa de maíz + sorrentinos de ricota y nuez en salsa fileto. Precio medio. Ideal para compartir.',
+     N'https://media.elgourmet.com/recetas/cover/d886d9d83cdfbbb1e1e7aa1d395d796c_3_3_photo.png', 0, 0.10, 1);
+
+INSERT INTO dbo.contenidos
+(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
+    (1, 2,
+     N'Combo Argentino & Italiano (Sin gluten): milanesa napolitana con papas al horno + penne rigate al pesto. Estilo tradicional, porciones generosas, precio medio.',
+     N'https://airescriollos.com.ar/wp-content/uploads/2020/11/Milanesa-de-Pollo-Napolitana.jpg', 0, 0.10, 1);
+
+
+-- ===========================
+-- Sucursal 2 (Casual, Alto/Premium, Mexicana, Vegetariana)
+-- ===========================
+INSERT INTO dbo.contenidos
+(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
+    (1, 4,
+     N'Tacos Degustación Premium (Vegetarianos): set de 6 tacos (hongos asados, calabaza especiada, frijoles y queso), salsas caseras y guacamole. Estilo casual, experiencia gourmet.',
+     N'https://lastaquerias.com/wp-content/uploads/2022/11/tacos-pastor-gaacc26fa8_1920.jpg', 0, 0.10, 2);
+
+INSERT INTO dbo.contenidos
+(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
+    (1, 5,
+     N'Burrito Bowl Verde (Vegetariano): arroz cilantro-lima, mix de hojas, porotos negros, fajitas de verduras, pico de gallo y crema ácida. Presentación premium, servicio casual.',
+     N'https://www.melonsinjamon.com/wp-content/uploads/2022/07/burrito-bowl-vegano.jpg', 0, 0.10, 2);
+
+/*
+update contenidos
+set publicado=0 where publicado=1*/
+
+
+
+
+
+
+
+
+
+
+
+/*---------------------------------------------------------------
+				sección procedimientos
+-----------------------------------------------------------------*/
+
+go
 CREATE OR ALTER PROCEDURE dbo.ins_cliente_reserva_sucursal
     -- Cliente (si @nro_cliente es NULL, se inserta usando correo como clave natural)
     @nro_cliente        INT              = NULL,
@@ -579,6 +598,42 @@ GO
 
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
+GO
+
+
+
+CREATE OR ALTER TRIGGER TR_zonas_sucursales_validar_capacidad
+ON dbo.zonas_sucursales
+AFTER INSERT, UPDATE
+                                  AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1
+        FROM (
+            SELECT i.nro_restaurante, i.nro_sucursal
+            FROM inserted i
+            UNION
+            SELECT d.nro_restaurante, d.nro_sucursal
+            FROM deleted d
+        ) AS afectados
+        JOIN dbo.sucursales s
+          ON s.nro_restaurante = afectados.nro_restaurante
+         AND s.nro_sucursal    = afectados.nro_sucursal
+        CROSS APPLY (
+            SELECT SUM(zs.cant_comensales) AS suma_zonas
+            FROM dbo.zonas_sucursales zs
+            WHERE zs.nro_restaurante = afectados.nro_restaurante
+              AND zs.nro_sucursal    = afectados.nro_sucursal
+        ) x
+        WHERE x.suma_zonas > s.total_comensales
+    )
+BEGIN
+ROLLBACK;
+THROW 51001, 'La suma de cant_comensales supera el total_comensales definido en sucursales.', 1;
+END
+END;
 GO
 
 CREATE OR ALTER PROCEDURE dbo.get_horarios_disponibles
@@ -789,7 +844,6 @@ END;
 GO
 
 
-
 CREATE OR ALTER PROCEDURE dbo.sp_clicks_contenidos_insertar_lote
     @clicks_json NVARCHAR(MAX)
     AS
@@ -945,58 +999,7 @@ DROP TABLE IF EXISTS #ClicksTemp;
 END;
 GO
 
-
-/* ============================================
-   CONTENIDOS PROMOCIONALES — RESTAURANTE 1
-   ============================================*/
-
--- ===========================
--- Sucursal 1 (Tradicional, Medio, Arg + Ita, Sin gluten)
--- ===========================
-INSERT INTO dbo.contenidos
-(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
-(1, 1,
- N'Menú Tradicional "Abuela" (Sin gluten): empanadas de carne al horno con tapa de maíz + sorrentinos de ricota y nuez en salsa fileto. Precio medio. Ideal para compartir.',
- N'https://media.elgourmet.com/recetas/cover/d886d9d83cdfbbb1e1e7aa1d395d796c_3_3_photo.png', 0, 0.10, 1);
-
-INSERT INTO dbo.contenidos
-(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
-    (1, 2,
-     N'Combo Argentino & Italiano (Sin gluten): milanesa napolitana con papas al horno + penne rigate al pesto. Estilo tradicional, porciones generosas, precio medio.',
-     N'https://airescriollos.com.ar/wp-content/uploads/2020/11/Milanesa-de-Pollo-Napolitana.jpg', 0, 0.10, 1);
-
-INSERT INTO dbo.contenidos
-(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
-    (1, 3,
-     N'Noche de Pastas Caseras (opción Sin gluten): tallarines amasados a la vista con bolognesa o tuco de cocción lenta + copa de vino de la casa. Ambiente tradicional.',
-     N'https://cdn.recetasderechupete.com/wp-content/uploads/2020/11/Tallarines-rojos-con-pollo.jpg', 0, 0.10, 1);
-
-
--- ===========================
--- Sucursal 2 (Casual, Alto/Premium, Mexicana, Vegetariana)
--- ===========================
-INSERT INTO dbo.contenidos
-(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
-    (1, 4,
-     N'Tacos Degustación Premium (Vegetarianos): set de 6 tacos (hongos asados, calabaza especiada, frijoles y queso), salsas caseras y guacamole. Estilo casual, experiencia gourmet.',
-     N'https://lastaquerias.com/wp-content/uploads/2022/11/tacos-pastor-gaacc26fa8_1920.jpg', 0, 0.10, 2);
-
-INSERT INTO dbo.contenidos
-(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
-    (1, 5,
-     N'Burrito Bowl Verde (Vegetariano): arroz cilantro-lima, mix de hojas, porotos negros, fajitas de verduras, pico de gallo y crema ácida. Presentación premium, servicio casual.',
-     N'https://www.melonsinjamon.com/wp-content/uploads/2022/07/burrito-bowl-vegano.jpg', 0, 0.10, 2);
-
-INSERT INTO dbo.contenidos
-(nro_restaurante, nro_contenido, contenido_a_publicar, imagen_a_publicar, publicado, costo_click, nro_sucursal) VALUES
-    (1, 6,
-     N'Cena Mexicana Premium: enchiladas rojas vegetarianas + maridaje con tequila/agua fresca. Estilo casual chic, producto de alta calidad, ideal para celebración.',
-     N'https://solnatural.bio/views/img/recipesphotos/97.jpg',0, 0.10, 2);
-go
-
-
-go
-	 	 CREATE OR ALTER PROCEDURE dbo.get_contenidos
+CREATE OR ALTER PROCEDURE dbo.get_contenidos
     @nro_restaurante INT
     AS
 BEGIN
@@ -1036,6 +1039,7 @@ select * from dbo.contenidos
 update dbo.contenidos
 set publicado=0
 
+    go
 CREATE OR ALTER PROCEDURE dbo.upd_publicar_contenidos_lote
     @nro_restaurante INT,
     @costo_click     DECIMAL(12,2),
@@ -1106,8 +1110,6 @@ SELECT
 END CATCH
 END;
 GO
-
-
 
 CREATE OR ALTER PROCEDURE dbo.ins_cliente_reserva_sucursal
     -- Cliente
@@ -1291,7 +1293,6 @@ IF XACT_STATE() <> 0 ROLLBACK;
 END CATCH
 END
 GO
-
 
 CREATE OR ALTER PROCEDURE dbo.cancelar_reserva_por_codigo_sucursal
     @cod_reserva_sucursal NVARCHAR(80)
