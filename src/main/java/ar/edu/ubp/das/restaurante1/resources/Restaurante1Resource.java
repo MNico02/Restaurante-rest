@@ -1,8 +1,10 @@
 package ar.edu.ubp.das.restaurante1.resources;
 import ar.edu.ubp.das.restaurante1.beans.*;
 import ar.edu.ubp.das.restaurante1.repositories.Restaurante1Repository;
-import ar.edu.ubp.das.restaurante1.service.ReservaService;
+//import ar.edu.ubp.das.restaurante1.service.ReservaService;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.nimbusds.jose.shaded.gson.Gson;
+import com.nimbusds.jose.shaded.gson.JsonObject;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.http.HttpStatus;
@@ -18,8 +20,20 @@ public class Restaurante1Resource {
 
     @Autowired
     private Restaurante1Repository restaurante1Repository;
-    @Autowired
-    private ReservaService reservaService;
+    /*@Autowired
+    private ReservaService reservaService;*/
+
+
+    /**
+     * le da a ristorino toda la info del restaurante
+     * @return info
+     * @throws JsonProcessingException
+     */
+    @GetMapping("/restaurante")
+    public ResponseEntity<RestauranteBean> getRestaurante() throws JsonProcessingException {
+        RestauranteBean info = restaurante1Repository.getInfoRestaurante();
+        return ResponseEntity.ok(info);
+    }
 
     /**
      * guarda en la base de datos del restaurante la reserva que le mando ristorino
@@ -28,9 +42,9 @@ public class Restaurante1Resource {
      * @return codReserva
      */
     @PostMapping("/confirmarReserva")
-    public ResponseEntity<ConfirmarReservaResponse> confirmarReserva(@RequestBody ReservaRestauranteBean req) {
+    public ResponseEntity<ConfirmarReservaResponse> confirmarReserva(@RequestBody String jsonRequest) {
 
-        ConfirmarReservaResponse resp = reservaService.confirmarReserva(req);
+        ConfirmarReservaResponse resp = restaurante1Repository.insReserva(jsonRequest);
 
         if (resp.isSuccess()) {
             return ResponseEntity.ok(resp);
@@ -47,9 +61,9 @@ public class Restaurante1Resource {
     }
 
     @PostMapping("/modificarReserva")
-    public ResponseEntity<ResponseBean> modificarReserva(@RequestBody ModificarReservaReqBean req) {
+    public ResponseEntity<ResponseBean> modificarReserva(@RequestBody String jsonRequest) {
 
-        ResponseBean resp = restaurante1Repository.modificarReserva(req);
+        ResponseBean resp = restaurante1Repository.modificarReserva(jsonRequest);
 
 
         return ResponseEntity.ok(resp);
@@ -59,20 +73,20 @@ public class Restaurante1Resource {
 
     /**
      * devuelve a ristorino una lista de horarios que dependen de la solicitud hecha por ristorino
-     * @param soliHorarioBean
      * @return
      */
     @PostMapping("/consultarDisponibilidad")
-    public ResponseEntity<List<HorarioBean>> obtenerHorarios(@RequestBody SoliHorarioBean soliHorarioBean) {
-        List<HorarioBean> horarios = restaurante1Repository.getHorarios(soliHorarioBean);
+    public ResponseEntity<List<HorarioBean>> obtenerHorarios(@RequestBody String jsonRequest) {
+        List<HorarioBean> horarios = restaurante1Repository.getHorarios(jsonRequest);
         return ResponseEntity.ok(horarios);
     }
 
     @PostMapping("/cancelarReserva")
-    public ResponseEntity<Map<String, Object>> cancelarReserva(@RequestBody Map<String, Object> req) {
-
-        String cod = String.valueOf(req.get("codReservaSucursal"));
-
+    public ResponseEntity<Map<String, Object>> cancelarReserva(@RequestBody String jsonRequest) {
+        //al repo le pasamos un parametro y no el json. Desarmamos el json aca para poder hacer una comprobacion
+        Gson gson = new Gson();
+        JsonObject json = gson.fromJson(jsonRequest, JsonObject.class);
+        String cod = json.get("codReservaSucursal").getAsString();
         if (cod == null || cod.isBlank() || "null".equalsIgnoreCase(cod)) {
             return ResponseEntity.badRequest().body(
                     Map.of("success", false, "status", "ERROR", "message", "codReservaSucursal es obligatorio.")
@@ -91,46 +105,40 @@ public class Restaurante1Resource {
     }
 
 
-    /**
-     * le da a ristorino toda la info del restaurante
-     * @param id
-     * @return info
-     * @throws JsonProcessingException
-     */
-    @GetMapping("/restaurante")
-    public ResponseEntity<RestauranteBean> getRestaurante(@RequestParam("id") int id) throws JsonProcessingException {
-        RestauranteBean info = restaurante1Repository.getInfoRestaurante(id);
-        return ResponseEntity.ok(info);
-    }
+
     /**
      * inserta en la base de datos una lista de clicks que ristorino le envia por medio del proceso batch.
-     * @param clicks
+
      * @return success true o succes false
      */
     @PostMapping("/registrarClicks")
-    public ResponseEntity<Map<String, Object>> insertarCicks(@RequestBody List<SoliClickBean> clicks) {
-        for (SoliClickBean click : clicks) {
-            System.out.println(click.getNroClick()+" "+click.getCodContenidoRestaurante()+" "+click.getCostoClick());
-        }
+    public ResponseBean insertarCicks(@RequestBody String jsonRequest) {
         try {
-            String resultado =    restaurante1Repository.insClickLote(clicks);
+            String resultado =    restaurante1Repository.insClickLote(jsonRequest);
             System.out.println(resultado);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Click registrado correctamente"));
+            ResponseBean resp = new ResponseBean();
+            resp.setSuccess(true);
+            resp.setMessage(resultado);
+            resp.setStatus("OK");
+            return resp;
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "error", e.getMessage()));
+            ResponseBean resp = new ResponseBean();
+            resp.setSuccess(false);
+            resp.setMessage( e.getMessage());
+            resp.setStatus("ERROR");
+            return resp;
         }
     }
 
     @GetMapping("/obtenerPromociones")
-    public ResponseEntity<List<ContenidoBean>> getPromociones(@RequestParam("id") int id) throws JsonProcessingException {
-        List<ContenidoBean> promociones = restaurante1Repository.getContenidos(id);
+    public ResponseEntity<List<ContenidoBean>> getPromociones() throws JsonProcessingException {
+        List<ContenidoBean> promociones = restaurante1Repository.getContenidos();
         return ResponseEntity.ok(promociones);
     }
     @PostMapping("/notificarRestaurante")
-    public ResponseEntity<UpdPublicarContenidosRespBean> notificarRestaurante(@RequestBody NotiRestReqBean req) {
+    public ResponseEntity<UpdPublicarContenidosRespBean> notificarRestaurante(@RequestBody String jsonRequest) {
         UpdPublicarContenidosRespBean resp =
-                restaurante1Repository.notificarContenidos(req);
+                restaurante1Repository.notificarContenidos(jsonRequest);
 
         if (resp == null) {
 
