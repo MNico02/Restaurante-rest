@@ -1,7 +1,6 @@
 package ar.edu.ubp.das.restaurante1.resources;
 import ar.edu.ubp.das.restaurante1.beans.*;
 import ar.edu.ubp.das.restaurante1.repositories.Restaurante1Repository;
-//import ar.edu.ubp.das.restaurante1.service.ReservaService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.nimbusds.jose.shaded.gson.Gson;
 import com.nimbusds.jose.shaded.gson.JsonObject;
