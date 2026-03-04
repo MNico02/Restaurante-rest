@@ -2,7 +2,7 @@
 
 ![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)
-![[Protocolo]](https://img.shields.io/badge/REST-005C84?style=for-the-badge)
+![Protocolo](https://img.shields.io/badge/REST-005C84?style=for-the-badge)
 
 Este repositorio contiene un servicio web independiente basado en API RESTful que simula el sistema interno de un restaurante. 
 
@@ -18,3 +18,7 @@ Este proyecto forma parte del ecosistema **Ristorino** y actúa como un proveedo
 * **Framework:** Spring Boot 
 * **Protocolo de Comunicación:** REST (JSON)
 * **Base de Datos:** MySQL
+
+## 👨‍💻 Autor
+* Nicolás Moresco
+* Email: nicolasmoresco02@gmail.com
